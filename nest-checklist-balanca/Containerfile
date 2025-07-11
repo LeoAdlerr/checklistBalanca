@@ -1,0 +1,26 @@
+# Containerfile
+FROM node:20-alpine
+
+RUN apk add --no-cache python3 make g++ bash dos2unix
+
+WORKDIR /app
+
+COPY package.json yarn.lock ./
+RUN yarn install
+RUN yarn cache clean
+
+RUN chmod +x /app/node_modules/.bin/*
+
+COPY . .
+COPY entrypoint.sh .
+COPY wait-for-it.sh .
+
+RUN dos2unix ./entrypoint.sh
+RUN dos2unix ./wait-for-it.sh
+
+# Garante que os scripts são executáveis (pode ser combinado em um só comando)
+RUN chmod +x ./entrypoint.sh ./wait-for-it.sh
+
+EXPOSE 8888
+
+CMD ["./entrypoint.sh"]
