@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsInt, IsOptional } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger'; // ✅ Importe
+import { IsString, IsNotEmpty, IsInt, IsOptional, IsNumber } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateInspectionDto {
   @ApiProperty({
@@ -11,9 +11,17 @@ export class CreateInspectionDto {
   inspectorName: string;
 
   @ApiProperty({
+    description: 'Nome do motorista do veículo.',
+    example: 'João da Silva',
+  })
+  @IsString()
+  @IsNotEmpty()
+  driverName: string;
+
+  @ApiProperty({
     description: 'Número do registro de entrada (opcional).',
     example: 'RE2025/123456',
-    required: false, // Deixa claro na documentação que não é obrigatório
+    required: false,
   })
   @IsString()
   @IsOptional()
@@ -27,6 +35,15 @@ export class CreateInspectionDto {
   @IsString()
   @IsOptional()
   vehiclePlates?: string;
+
+  @ApiProperty({
+    description: 'Número do documento de transporte (ex: CTe, AWB) (opcional).',
+    example: '987654321',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  transportDocument?: string;
 
   @ApiProperty({
     description: 'ID da modalidade da inspeção. (1: RODOVIARIO, 2: MARITIMO, 3: AEREO)',
@@ -62,10 +79,29 @@ export class CreateInspectionDto {
   containerTypeId?: number;
 
   @ApiProperty({
-    description: 'Nome do motorista do veículo.',
-    example: 'João da Silva',
+    description: 'Comprimento verificado na inspeção, em metros (opcional).',
+    example: 12.02,
+    required: false,
   })
-  @IsString()
-  @IsNotEmpty()
-  driverName: string;
+  @IsNumber()
+  @IsOptional()
+  verifiedLength?: number;
+
+  @ApiProperty({
+    description: 'Largura verificada na inspeção, em metros (opcional).',
+    example: 2.35,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  verifiedWidth?: number;
+
+  @ApiProperty({
+    description: 'Altura verificada na inspeção, em metros (opcional).',
+    example: 2.69,
+    required: false,
+  })
+  @IsNumber()
+  @IsOptional()
+  verifiedHeight?: number;
 }

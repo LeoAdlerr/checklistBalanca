@@ -1,14 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { UpdateInspectionChecklistItemUseCase } from '../../../../src/domain/use-cases/update-inspection-checklist-item.use-case';
+import { UpdateInspectionChecklistItemUseCaseImpl } from '../../../../src/domain/use-cases/impl/update-inspection-checklist-item.use-case.impl';
 import { InspectionRepositoryPort } from '../../../../src/domain/repositories/inspection.repository.port';
 import { UpdateInspectionChecklistItemDto } from '../../../../src/api/dtos/update-inspection-checklist-item.dto';
 import { InspectionChecklistItem } from '../../../../src/domain/models/inspection-checklist-item.model';
-import { NotFoundException } from '@nestjs/common';
 
-// Mock do nosso repositório de inspeção.
 const mockInspectionRepository = {
-  create: jest.fn(),
-  // ATUALIZAÇÃO: O nome do método no mock agora é `updateItemByPoint`.
   updateItemByPoint: jest.fn(),
 };
 
@@ -19,7 +17,11 @@ describe('UpdateInspectionChecklistItemUseCase', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        UpdateInspectionChecklistItemUseCase,
+        // Mapeia a interface (provide) para a implementação (useClass)
+        {
+          provide: UpdateInspectionChecklistItemUseCase,
+          useClass: UpdateInspectionChecklistItemUseCaseImpl,
+        },
         {
           provide: InspectionRepositoryPort,
           useValue: mockInspectionRepository,
@@ -32,7 +34,7 @@ describe('UpdateInspectionChecklistItemUseCase', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks(); // Usar reset para garantir isolamento
   });
 
   it('deve chamar o método updateItemByPoint do repositório com os dados corretos', async () => {

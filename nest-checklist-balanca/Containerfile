@@ -1,26 +1,36 @@
 # Containerfile
 FROM node:20-alpine
 
-RUN apk add --no-cache python3 make g++ bash dos2unix
+# Instala dependências de build + Chromium + bash + dos2unix
+RUN apk add --no-cache \
+  python3 make g++ bash dos2unix \
+  chromium \
+  nss \
+  freetype \
+  harfbuzz \
+  ttf-freefont \
+  font-noto \
+  dumb-init
+
+# Define o path do Chromium para o Puppeteer usar
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+ENV CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 WORKDIR /app
 
+# Copia só o package e lock para instalar dependências
 COPY package.json yarn.lock ./
-RUN yarn install
-RUN yarn cache clean
 
-RUN chmod +x /app/node_modules/.bin/*
+# Instala node_modules
+RUN yarn install && yarn cache clean
 
+# Copia o resto do código (usa .dockerignore para ignorar node_modules local)
 COPY . .
-COPY entrypoint.sh .
-COPY wait-for-it.sh .
 
-RUN dos2unix ./entrypoint.sh
-RUN dos2unix ./wait-for-it.sh
+# Converte e garante permissão nos scripts
+RUN dos2unix ./entrypoint.sh ./wait-for-it.sh && \
+    chmod +x ./entrypoint.sh ./wait-for-it.sh
 
-# Garante que os scripts são executáveis (pode ser combinado em um só comando)
-RUN chmod +x ./entrypoint.sh ./wait-for-it.sh
-
+# Expõe porta e executa
 EXPOSE 8888
-
 CMD ["./entrypoint.sh"]

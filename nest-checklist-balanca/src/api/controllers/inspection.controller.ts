@@ -1,8 +1,9 @@
-import { Controller, Get, Post, Body, HttpCode, HttpStatus, Patch, Param, ParseIntPipe, UseInterceptors, UploadedFile, HttpException, NotFoundException } from '@nestjs/common';
+import { Controller, Res, Get, Post, Body, HttpCode, HttpStatus, Patch, Param, ParseIntPipe, UseInterceptors, UploadedFile, HttpException, NotFoundException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
-import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger'; // ✅ Importe os decorators
+import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { Response } from 'express';
 
 import { CreateInspectionDto } from '../dtos/create-inspection.dto';
 import { UpdateInspectionChecklistItemDto } from '../dtos/update-inspection-checklist-item.dto';
@@ -15,8 +16,11 @@ import { FindInspectionByIdUseCase } from 'src/domain/use-cases/find-inspection-
 import { Inspection } from 'src/domain/models/inspection.model';
 import { InspectionChecklistItem } from 'src/domain/models/inspection-checklist-item.model';
 import { ItemEvidence } from 'src/domain/models/item-evidence.model';
+import { GenerateInspectionReportUseCase } from 'src/domain/use-cases/generate-inspection-report.use-case';
+import { CheckForExistingInspectionUseCase } from 'src/domain/use-cases/check-for-existing-inspection.use-case';
 
-@ApiTags('Inspections') // ✅ Agrupa todos os endpoints deste controller
+
+@ApiTags('Inspections')
 @Controller('inspections')
 export class InspectionController {
   constructor(
@@ -26,6 +30,8 @@ export class InspectionController {
     private readonly finalizeInspectionUseCase: FinalizeInspectionUseCase,
     private readonly findAllInspectionsUseCase: FindAllInspectionsUseCase,
     private readonly findInspectionByIdUseCase: FindInspectionByIdUseCase,
+    private readonly generateReportUseCase: GenerateInspectionReportUseCase,
+    private readonly checkForExistingUseCase: CheckForExistingInspectionUseCase,
   ) { }
 
   @Get()
@@ -50,6 +56,23 @@ export class InspectionController {
       }
       throw error;
     }
+  }
+
+  @Post('check-existing')
+  @ApiOperation({ summary: 'Verifica se uma inspeção similar já existe' })
+  @ApiResponse({ status: 200, description: 'Uma inspeção similar e em andamento foi encontrada.' })
+  @ApiResponse({ status: 404, description: 'Nenhuma inspeção similar em andamento foi encontrada.' })
+  @HttpCode(HttpStatus.OK)
+  async checkExisting(@Body() dto: CreateInspectionDto): Promise<Inspection> {
+    const existingInspection = await this.checkForExistingUseCase.execute(dto);
+    
+    if (!existingInspection) {
+      // Se o caso de uso retornar nulo, nós lançamos uma exceção 404.
+      throw new NotFoundException('Nenhuma inspeção similar em andamento foi encontrada.');
+    }
+
+    // Se uma inspeção for encontrada, a retornamos com status 200 OK.
+    return existingInspection;
   }
 
   @Post()
@@ -134,5 +157,29 @@ export class InspectionController {
   @HttpCode(HttpStatus.OK)
   async finalize(@Param('id', ParseIntPipe) id: number): Promise<Inspection> {
     return this.finalizeInspectionUseCase.execute(id);
+  }
+
+  @Get(':id/report/pdf')
+  @ApiOperation({ summary: 'Gerar e baixar o relatório de uma inspeção em PDF' })
+  @ApiResponse({ status: 200, description: 'PDF gerado com sucesso.' })
+  @ApiResponse({ status: 404, description: 'Inspeção não encontrada.' })
+  @ApiResponse({ status: 400, description: 'Não é possível gerar o relatório, pois a inspeção está incompleta.' })
+  async generateReport(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ): Promise<void> {
+
+    // 1. Chama o caso de uso para gerar o buffer do PDF
+    const pdfBuffer = await this.generateReportUseCase.execute(id);
+
+    // 2. Define os cabeçalhos HTTP para forçar o download no navegador
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="inspecao-${id}.pdf"`,
+    );
+
+    // 3. Envia o buffer do PDF como resposta
+    res.send(pdfBuffer);
   }
 }

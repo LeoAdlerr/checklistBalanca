@@ -1,0 +1,12 @@
+# Ignorar dependências, pois elas são instaladas DENTRO do container
+node_modules
+
+# Ignorar a pasta de build/transpilação
+dist
+
+# Ignorar arquivos de log e ambiente
+*.log
+.env
+
+# Pasta do Docker/Podman
+.docker/

@@ -1,5 +1,5 @@
 import { IsString, IsInt, IsOptional, IsIn } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger'; // ✅ Importe
+import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateInspectionChecklistItemDto {
   @ApiProperty({

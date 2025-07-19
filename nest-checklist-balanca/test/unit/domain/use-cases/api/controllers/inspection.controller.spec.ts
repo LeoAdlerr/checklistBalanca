@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InspectionController } from 'src/api/controllers/inspection.controller';
 import { CreateInspectionUseCase } from 'src/domain/use-cases/create-inspection.use-case';
 import { UpdateInspectionChecklistItemUseCase } from 'src/domain/use-cases/update-inspection-checklist-item.use-case';
-import { UploadEvidenceUseCase } from 'src/domain/use-cases/upload-evidence.use-case';
+import { UploadEvidenceUseCase } from '@domain/use-cases/upload-evidence.use-case';
 import { FindAllInspectionsUseCase } from '@domain/use-cases/find-all-inspections.use-case';
 import { CreateInspectionDto } from 'src/api/dtos/create-inspection.dto';
 import { UpdateInspectionChecklistItemDto } from 'src/api/dtos/update-inspection-checklist-item.dto';
@@ -13,6 +13,9 @@ import { Readable } from 'stream';
 import { FinalizeInspectionUseCase } from '@domain/use-cases/finalize-inspection.use-case';
 import { FindInspectionByIdUseCase } from '@domain/use-cases/find-inspection-by-id.use-case';
 import { NotFoundException } from '@nestjs/common';
+import { GenerateInspectionReportUseCase } from '@domain/use-cases/generate-inspection-report.use-case';
+import { CheckForExistingInspectionUseCase } from '@domain/use-cases/check-for-existing-inspection.use-case';
+
 
 // Mocks para todos os casos de uso injetados no controller.
 const mockCreateInspectionUseCase = { execute: jest.fn() };
@@ -21,6 +24,8 @@ const mockUploadEvidenceUseCase = { execute: jest.fn() };
 const mockFinalizeInspectionUseCase = { execute: jest.fn() };
 const mockFindAllInspectionsUseCase = { execute: jest.fn() };
 const mockFindByIdUseCase = { execute: jest.fn() };
+const mockGenerateReportUseCase = { execute: jest.fn() };
+const mockCheckForExistingUseCase = { execute: jest.fn() };
 
 // Mock de um arquivo de upload para os testes.
 const mockFile: Express.Multer.File = {
@@ -44,6 +49,8 @@ describe('InspectionController', () => {
   let finalizeUseCase: FinalizeInspectionUseCase;
   let findAllUseCase: FindAllInspectionsUseCase;
   let findByIdUseCase: FindInspectionByIdUseCase;
+  let generateReportUseCase: GenerateInspectionReportUseCase;
+  let checkForExistingUseCase: CheckForExistingInspectionUseCase;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -55,6 +62,8 @@ describe('InspectionController', () => {
         { provide: FinalizeInspectionUseCase, useValue: mockFinalizeInspectionUseCase },
         { provide: FindAllInspectionsUseCase, useValue: mockFindAllInspectionsUseCase },
         { provide: FindInspectionByIdUseCase, useValue: mockFindByIdUseCase },
+        { provide: GenerateInspectionReportUseCase, useValue: mockGenerateReportUseCase },
+        { provide: CheckForExistingInspectionUseCase, useValue: mockCheckForExistingUseCase },
       ],
     }).compile();
 
@@ -64,10 +73,13 @@ describe('InspectionController', () => {
     uploadUseCase = module.get<UploadEvidenceUseCase>(UploadEvidenceUseCase);
     finalizeUseCase = module.get<FinalizeInspectionUseCase>(FinalizeInspectionUseCase);
     findAllUseCase = module.get<FindAllInspectionsUseCase>(FindAllInspectionsUseCase);
+    findByIdUseCase = module.get<FindInspectionByIdUseCase>(FindInspectionByIdUseCase);
+    generateReportUseCase = module.get<GenerateInspectionReportUseCase>(GenerateInspectionReportUseCase);
+    checkForExistingUseCase = module.get<CheckForExistingInspectionUseCase>(CheckForExistingInspectionUseCase);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('deve ser definido', () => {
@@ -183,18 +195,18 @@ describe('InspectionController', () => {
         updatedAt: new Date(),
       } as Inspection;
 
-      // ✅ NOVO: Agora simulamos o UseCase retornando o objeto da inspeção.
+      //simulamos o UseCase retornando o objeto da inspeção.
       mockFinalizeInspectionUseCase.execute.mockResolvedValue(mockFinalizedInspection);
 
       // Act
-      // ✅ NOVO: Capturamos o resultado que o método do controller retorna.
+      //  Capturamos o resultado que o método do controller retorna.
       const result = await controller.finalize(inspectionId);
 
       // Assert
       expect(finalizeUseCase.execute).toHaveBeenCalledTimes(1);
       expect(finalizeUseCase.execute).toHaveBeenCalledWith(inspectionId);
 
-      // ✅ NOVO: Verificamos se o controller retornou exatamente o que o UseCase forneceu.
+      // Verificamos se o controller retornou exatamente o que o UseCase forneceu.
       expect(result).toEqual(mockFinalizedInspection);
     });
   });
@@ -217,32 +229,127 @@ describe('InspectionController', () => {
     });
   });
   describe('findById', () => {
-    it('deve chamar o FindInspectionByIdUseCase e retornar uma única inspeção', async () => {
-      // Arrange
+    it('deve chamar o FindInspectionByIdUseCase e retornar a inspeção com suas evidências', async () => {
+      // ARRANGE
       const inspectionId = 1;
-      const mockInspection: Inspection = { id: inspectionId, inspectorName: 'Leonardo' } as Inspection;
-      mockFindByIdUseCase.execute.mockResolvedValue(mockInspection);
+      const mockRichInspection: Inspection = {
+        id: inspectionId,
+        inspectorName: 'Leonardo',
+        statusId: 1,
+        driverName: 'Motorista Mock',
+        modalityId: 1,
+        operationTypeId: 2,
+        unitTypeId: 1,
+        // Adicionando as propriedades opcionais como undefined para combinar com o tipo
+        entryRegistration: undefined,
+        vehiclePlates: undefined,
+        containerTypeId: undefined,
+        startDatetime: new Date(),
+        endDatetime: undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        // O restante das propriedades opcionais da sua entidade (como paths de assinatura)
+        // também seriam 'undefined' aqui em um objeto real não finalizado.
+        items: [
+          {
+            id: 1,
+            inspectionId: inspectionId,
+            masterPointId: 1,
+            statusId: 2,
+            observations: 'Tudo OK',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            evidences: [
+              {
+                id: 101,
+                itemId: 1,
+                fileName: 'evidence.jpg',
+                filePath: 'uploads/1/1/evidence.jpg',
+              } as ItemEvidence,
+            ],
+            status: { id: 2, name: 'CONFORME' }
+          } as InspectionChecklistItem,
+        ],
+        // Adicionando o objeto de status principal para o mock ser completo
+        status: { id: 1, name: 'EM_INSPECAO' }
+      } as Inspection;
 
-      // Act
+      mockFindByIdUseCase.execute.mockResolvedValue(mockRichInspection);
+
+      // ACT
       const result = await controller.findById(inspectionId);
 
-      // Assert
+      // ASSERT
       expect(mockFindByIdUseCase.execute).toHaveBeenCalledWith(inspectionId);
-      expect(mockFindByIdUseCase.execute).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(mockInspection);
+      expect(result).toEqual(mockRichInspection);
     });
 
+
+    // O teste para 'NotFoundException' permanece o mesmo.
     it('deve lançar um NotFoundException se o caso de uso não encontrar a inspeção', async () => {
-      // Arrange
-      const inspectionId = 999; // Um ID que não existe
+      const inspectionId = 999;
       const errorMessage = `Inspeção com o ID "${inspectionId}" não foi encontrada.`;
       mockFindByIdUseCase.execute.mockRejectedValue(new NotFoundException(errorMessage));
 
-      // Act & Assert
-      // Verificamos se a chamada ao método do controller rejeita a Promise
-      // e lança a exceção correta.
       await expect(controller.findById(inspectionId)).rejects.toThrow(NotFoundException);
       await expect(controller.findById(inspectionId)).rejects.toThrow(errorMessage);
     });
   });
+  describe('generateReport', () => {
+    it('deve chamar o GenerateInspectionReportUseCase e retornar um PDF', async () => {
+      // ARRANGE
+      const inspectionId = 1;
+      const mockPdfBuffer = Buffer.from('conteúdo-do-pdf');
+
+      // Criamos um mock do objeto de resposta do Express
+      const mockResponse = {
+        setHeader: jest.fn(),
+        send: jest.fn(),
+      };
+
+      mockGenerateReportUseCase.execute.mockResolvedValue(mockPdfBuffer);
+
+      // ACT
+      // A chamada ao método vai falhar aqui, pois ele não existe ainda (ESTADO VERMELHO)
+      await controller.generateReport(inspectionId, mockResponse as any);
+
+      // ASSERT
+      expect(generateReportUseCase.execute).toHaveBeenCalledWith(inspectionId);
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+        'Content-Disposition',
+        `attachment; filename="inspecao-${inspectionId}.pdf"`,
+      );
+      expect(mockResponse.send).toHaveBeenCalledWith(mockPdfBuffer);
+    });
+  });
+  // TESTE para o endpoint 'check-existing'
+  describe('checkExisting', () => {
+    it('deve retornar a inspeção completa se uma duplicata for encontrada', async () => {
+      // Arrange
+      const dto = { inspectorName: 'Teste' } as CreateInspectionDto;
+      const mockExistingInspection = { id: 123, inspectorName: 'Teste' } as Inspection;
+      mockCheckForExistingUseCase.execute.mockResolvedValue(mockExistingInspection);
+
+      // Act
+      const result = await controller.checkExisting(dto);
+
+      // Assert
+      expect(checkForExistingUseCase.execute).toHaveBeenCalledWith(dto);
+      // O controller retorna o objeto de inspeção completo
+      expect(result).toEqual(mockExistingInspection);
+    });
+
+    it('deve lançar NotFoundException se nenhuma inspeção existente for encontrada', async () => {
+      // Arrange
+      const dto = { inspectorName: 'Teste' } as CreateInspectionDto;
+      // O Use Case retorna null
+      mockCheckForExistingUseCase.execute.mockResolvedValue(null);
+
+      // Act & Assert
+      // O teste agora espera que o controller lance uma exceção 404
+      await expect(controller.checkExisting(dto)).rejects.toThrow(NotFoundException);
+    });
+  });
+
 });

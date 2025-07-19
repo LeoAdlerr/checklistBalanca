@@ -18,6 +18,8 @@ export abstract class InspectionRepositoryPort {
   ): Promise<InspectionChecklistItem | null>;
 
   abstract addEvidenceToItem(evidenceData: Partial<ItemEvidence>): Promise<ItemEvidence>;
+  
+  abstract findExistingInspection(inspectionData: Partial<Inspection>): Promise<Inspection | null>;
 
   abstract findByIdWithItems(inspectionId: number): Promise<Inspection | null>;
 

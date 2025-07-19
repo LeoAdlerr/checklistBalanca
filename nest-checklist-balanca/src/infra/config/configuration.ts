@@ -1,5 +1,8 @@
 export default () => ({
   port: parseInt(process.env.PORT || '8080', 10),
+  cors: {
+    origins: process.env.CORS_ORIGINS || 'http://localhost:5173',
+  },
   db: {
     host: process.env.DB_HOST || 'test',
     port: parseInt(process.env.DB_PORT || '3333', 10),

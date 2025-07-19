@@ -79,31 +79,40 @@ graph TD
 
 ```mermaid
 erDiagram
-    USERS {
-        INT id PK
-        VARCHAR name
-        VARCHAR email
-        BOOLEAN is_active
-    }
-
     INSPECTIONS {
         INT id PK
-        INT inspector_id FK
+        VARCHAR inspector_name
         INT status_id FK
+        VARCHAR entry_registration
+        VARCHAR vehicle_plates
+        VARCHAR transport_document
         INT modality_id FK
         INT operation_type_id FK
         INT unit_type_id FK
         INT container_type_id FK
-        VARCHAR vehicle_plates
+        DECIMAL verified_length
+        DECIMAL verified_width
+        DECIMAL verified_height
         DATETIME start_datetime
         DATETIME end_datetime
         VARCHAR driver_name
         VARCHAR driver_signature_path
         VARCHAR inspector_signature_path
+        VARCHAR seal_uaga_post_inspection
+        VARCHAR seal_uaga_post_loading
+        VARCHAR seal_shipper
+        VARCHAR seal_rfb
         INT seal_verification_rfb_status_id FK
         INT seal_verification_shipper_status_id FK
         INT seal_verification_tape_status_id FK
+        VARCHAR seal_verification_responsible_name
+        VARCHAR seal_verification_signature_path
+        DATE seal_verification_date
+        TEXT observations
+        TEXT action_taken
         VARCHAR generated_pdf_path
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
     }
 
     INSPECTION_CHECKLIST_ITEMS {
@@ -112,18 +121,25 @@ erDiagram
         INT master_point_id FK
         INT status_id FK
         TEXT observations
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
     }
 
     ITEM_EVIDENCES {
         INT id PK
         INT item_id FK
         VARCHAR file_path
+        VARCHAR file_name
+        INT file_size
+        VARCHAR mime_type
+        TIMESTAMP created_at
     }
 
     MASTER_INSPECTION_POINTS {
         INT id PK
         INT point_number
         VARCHAR name
+        TEXT description
         VARCHAR category
     }
 
@@ -163,19 +179,23 @@ erDiagram
     }
 
     %% Relacionamentos principais
-    USERS ||--o{ INSPECTIONS : ""
-    INSPECTIONS ||--o{ INSPECTION_CHECKLIST_ITEMS : ""
-    INSPECTION_CHECKLIST_ITEMS ||--o{ ITEM_EVIDENCES : ""
-    MASTER_INSPECTION_POINTS ||--o{ INSPECTION_CHECKLIST_ITEMS : ""
+    INSPECTIONS ||--o{ INSPECTION_CHECKLIST_ITEMS : contém
+    INSPECTION_CHECKLIST_ITEMS ||--o{ ITEM_EVIDENCES : tem
+    MASTER_INSPECTION_POINTS ||--o{ INSPECTION_CHECKLIST_ITEMS : ponto
 
     %% Relacionamentos com lookups
-    LOOKUP_STATUSES ||--o{ INSPECTIONS : ""
-    LOOKUP_MODALITIES ||--o{ INSPECTIONS : ""
-    LOOKUP_OPERATION_TYPES ||--o{ INSPECTIONS : ""
-    LOOKUP_UNIT_TYPES ||--o{ INSPECTIONS : ""
-    LOOKUP_CONTAINER_TYPES ||--o{ INSPECTIONS : ""
-    LOOKUP_CHECKLIST_ITEM_STATUSES ||--o{ INSPECTION_CHECKLIST_ITEMS : ""
-    LOOKUP_SEAL_VERIFICATION_STATUSES ||--o{ INSPECTIONS : ""
+    LOOKUP_STATUSES ||--o{ INSPECTIONS : status
+    LOOKUP_MODALITIES ||--o{ INSPECTIONS : modalidade
+    LOOKUP_OPERATION_TYPES ||--o{ INSPECTIONS : tipo_op
+    LOOKUP_UNIT_TYPES ||--o{ INSPECTIONS : tipo_unidade
+    LOOKUP_CONTAINER_TYPES ||--o{ INSPECTIONS : tipo_container
+
+    LOOKUP_SEAL_VERIFICATION_STATUSES ||--o{ INSPECTIONS : status_lacre_rfb
+    LOOKUP_SEAL_VERIFICATION_STATUSES ||--o{ INSPECTIONS : status_lacre_shipper
+    LOOKUP_SEAL_VERIFICATION_STATUSES ||--o{ INSPECTIONS : status_lacre_tape
+
+    LOOKUP_CHECKLIST_ITEM_STATUSES ||--o{ INSPECTION_CHECKLIST_ITEMS : status_item
+
 ```
 
 <details>
@@ -191,96 +211,18 @@ erDiagram
         </tr>
     </thead>
     <tbody>
-        <tr>
-            <td><code>lookup_statuses</code></td>
-            <td>Status possíveis para uma inspeção geral.</td>
-        </tr>
-        <tr>
-            <td><code>lookup_modalities</code></td>
-            <td>Modalidades de transporte disponíveis.</td>
-        </tr>
-        <tr>
-            <td><code>lookup_operation_types</code></td>
-            <td>Tipos de operação aduaneira (nível de risco).</td>
-        </tr>
-        <tr>
-            <td><code>lookup_unit_types</code></td>
-            <td>Tipos de unidade de carga.</td>
-        </tr>
-        <tr>
-            <td><code>lookup_container_types</code></td>
-            <td>Tipos específicos de contêineres.</td>
-        </tr>
-        <tr>
-            <td><code>lookup_checklist_item_statuses</code></td>
-            <td>Status possíveis para cada item individual da inspeção.</td>
-        </tr>
-        <tr>
-            <td><code>lookup_seal_verification_statuses</code></td>
-            <td>Status para a verificação de lacres na saída.</td>
-        </tr>
+        <tr><td><code>lookup_statuses</code></td><td>Status possíveis para uma inspeção geral.</td></tr>
+        <tr><td><code>lookup_modalities</code></td><td>Modalidades de transporte disponíveis.</td></tr>
+        <tr><td><code>lookup_operation_types</code></td><td>Tipos de operação aduaneira (nível de risco).</td></tr>
+        <tr><td><code>lookup_unit_types</code></td><td>Tipos de unidade de carga.</td></tr>
+        <tr><td><code>lookup_container_types</code></td><td>Tipos específicos de contêineres.</td></tr>
+        <tr><td><code>lookup_checklist_item_statuses</code></td><td>Status possíveis para cada item individual da inspeção.</td></tr>
+        <tr><td><code>lookup_seal_verification_statuses</code></td><td>Status para a verificação de lacres de saída.</td></tr>
     </tbody>
 </table>
 
 <hr>
 <h3>Tabelas Principais</h3>
-
-<h4><strong><code>users</code></strong></h4>
-<p>Armazena os dados dos usuários autorizados a realizar inspeções.</p>
-<table border="1" style="border-collapse: collapse; width:100%;">
-    <thead>
-        <tr>
-            <th align="left">Nome da Coluna</th>
-            <th align="left">Tipo de Dado</th>
-            <th align="left">Chave</th>
-            <th align="left">Nulo?</th>
-            <th align="left">Descrição / Regra de Negócio</th>
-            <th align="left">Exemplo</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td><code>id</code></td>
-            <td>INT</td>
-            <td>PK</td>
-            <td>Não</td>
-            <td>Identificador único do usuário (auto-incremento).</td>
-            <td><code>101</code></td>
-        </tr>
-        <tr>
-            <td><code>name</code></td>
-            <td>VARCHAR(255)</td>
-            <td></td>
-            <td>Não</td>
-            <td>Nome completo do inspetor ou administrador.</td>
-            <td><code>"Carlos Andrade"</code></td>
-        </tr>
-        <tr>
-            <td><code>email</code></td>
-            <td>VARCHAR(255)</td>
-            <td>UNIQUE</td>
-            <td>Não</td>
-            <td>E-mail usado para login. Deve ser único.</td>
-            <td><code>"carlos.a@unive.com"</code></td>
-        </tr>
-        <tr>
-            <td><code>password</code></td>
-            <td>VARCHAR(255)</td>
-            <td></td>
-            <td>Não</td>
-            <td>Senha do usuário, armazenada com hash seguro.</td>
-            <td><code>"$2b$10$..."</code></td>
-        </tr>
-        <tr>
-            <td><code>is_active</code></td>
-            <td>BOOLEAN</td>
-            <td></td>
-            <td>Não</td>
-            <td>Controla se o usuário pode acessar o sistema.</td>
-            <td><code>true</code></td>
-        </tr>
-    </tbody>
-</table>
 
 <h4><strong><code>master_inspection_points</code></strong></h4>
 <p>Tabela mestre com a definição dos 18 pontos de inspeção padrão.</p>
@@ -296,108 +238,93 @@ erDiagram
         </tr>
     </thead>
     <tbody>
-        <tr>
-            <td><code>id</code></td>
-            <td>INT</td>
-            <td>PK</td>
-            <td>Não</td>
-            <td>Identificador único do ponto de inspeção.</td>
-            <td><code>11</code></td>
-        </tr>
-        <tr>
-            <td><code>point_number</code></td>
-            <td>INT</td>
-            <td>UNIQUE</td>
-            <td>Não</td>
-            <td>Número de ordem do ponto de inspeção (1 a 18).</td>
-            <td><code>11</code></td>
-        </tr>
-        <tr>
-            <td><code>name</code></td>
-            <td>VARCHAR(255)</td>
-            <td></td>
-            <td>Não</td>
-            <td>Nome do ponto de inspeção.</td>
-            <td><code>"PNEUS"</code></td>
-        </tr>
-        <tr>
-            <td><code>description</code></td>
-            <td>TEXT</td>
-            <td></td>
-            <td>Sim</td>
-            <td>Descrição detalhada do procedimento de verificação.</td>
-            <td><code>"Martelar levemente em todo pneu."</code></td>
-        </tr>
-        <tr>
-            <td><code>category</code></td>
-            <td>VARCHAR</td>
-            <td></td>
-            <td>Não</td>
-            <td>Categoria do ponto: 'VEICULO' ou 'CONTEINER'.</td>
-            <td><code>"VEICULO"</code></td>
-        </tr>
+        <tr><td><code>id</code></td><td>INT</td><td>PK</td><td>Não</td><td>Identificador único do ponto de inspeção.</td><td><code>5</code></td></tr>
+        <tr><td><code>point_number</code></td><td>INT</td><td>UNIQUE</td><td>Não</td><td>Número do ponto (1 a 18).</td><td><code>5</code></td></tr>
+        <tr><td><code>name</code></td><td>VARCHAR(255)</td><td></td><td>Não</td><td>Nome resumido do ponto.</td><td><code>"PISO DO CAMINHÃO"</code></td></tr>
+        <tr><td><code>description</code></td><td>TEXT</td><td></td><td>Sim</td><td>Descrição detalhada do procedimento.</td><td><code>"Levantar o carpete para verificar compartimentos ocultos."</code></td></tr>
+        <tr><td><code>category</code></td><td>VARCHAR(50)</td><td></td><td>Não</td><td>Categoria: VEICULO ou CONTEINER.</td><td><code>"VEICULO"</code></td></tr>
     </tbody>
 </table>
 
 <h4><strong><code>inspections</code></strong></h4>
-<p>Tabela central que armazena cada registro de inspeção (checklist).</p>
+<p>Tabela que armazena cada checklist de inspeção.</p>
 <table border="1" style="border-collapse: collapse; width:100%;">
     <thead>
-        <tr>
-            <th align="left">Nome da Coluna</th>
-            <th align="left">Tipo de Dado</th>
-            <th align="left">Chave</th>
-            <th align="left">Nulo?</th>
-            <th align="left">Descrição / Regra de Negócio</th>
-            <th align="left">Exemplo</th>
-        </tr>
+        <tr><th align="left">Nome da Coluna</th><th align="left">Tipo de Dado</th><th align="left">Chave</th><th align="left">Nulo?</th><th align="left">Descrição</th><th align="left">Exemplo</th></tr>
     </thead>
     <tbody>
         <tr><td><code>id</code></td><td>INT</td><td>PK</td><td>Não</td><td>Identificador único da inspeção (auto-incremento).</td><td><code>2024001</code></td></tr>
-        <tr><td><code>inspector_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID do usuário (<code>users</code>) que realizou a inspeção.</td><td><code>101</code></td></tr>
-        <tr><td><code>status_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID do status geral da inspeção (<code>lookup_statuses</code>).</td><td><code>2</code> (<code>APROVADO</code>)</td></tr>
-        <tr><td><code>modality_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID da modalidade (<code>lookup_modalities</code>).</td><td><code>1</code> (<code>RODOVIARIO</code>)</td></tr>
-        <tr><td><code>operation_type_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID do tipo de operação (<code>lookup_operation_types</code>).</td><td><code>1</code> (<code>VERDE</code>)</td></tr>
-        <tr><td><code>unit_type_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID do tipo de unidade (<code>lookup_unit_types</code>).</td><td><code>1</code> (<code>CONTAINER</code>)</td></tr>
-        <tr><td><code>container_type_id</code></td><td>INT</td><td>FK</td><td>Sim</td><td>ID do tipo de contêiner (<code>lookup_container_types</code>).</td><td><code>2</code> (<code>DRY_40</code>)</td></tr>
-        <tr><td><code>vehicle_plates</code></td><td>VARCHAR(20)</td><td></td><td>Sim</td><td>Placas do veículo.</td><td><code>"BRA2E19"</code></td></tr>
-        <tr><td><code>start_datetime</code></td><td>DATETIME</td><td></td><td>Não</td><td>Data e hora de início da inspeção.</td><td><code>"2025-06-27 14:30:00"</code></td></tr>
-        <tr><td><code>end_datetime</code></td><td>DATETIME</td><td></td><td>Sim</td><td>Data e hora de término da inspeção.</td><td><code>"2025-06-27 15:15:00"</code></td></tr>
-        <tr><td><code>driver_name</code></td><td>VARCHAR(255)</td><td></td><td>Não</td><td>Nome do motorista do veículo.</td><td><code>"José de Almeida"</code></td></tr>
-        <tr><td><code>driver_signature_path</code></td><td>VARCHAR(512)</td><td></td><td>Sim</td><td>Caminho para o arquivo de imagem da assinatura do motorista.</td><td><code>"/sig/insp_2024001_driver.png"</code></td></tr>
-        <tr><td><code>inspector_signature_path</code></td><td>VARCHAR(512)</td><td></td><td>Sim</td><td>Caminho para o arquivo da assinatura do inspetor.</td><td><code>"/sig/insp_2024001_inspector.png"</code></td></tr>
-        <tr><td><code>generated_pdf_path</code></td><td>VARCHAR(512)</td><td></td><td>Sim</td><td>Caminho para o arquivo PDF gerado.</td><td><code>"/reports/insp_2024001.pdf"</code></td></tr>
+        <tr><td><code>inspector_name</code></td><td>VARCHAR(255)</td><td></td><td>Não</td><td>Nome do responsável pela inspeção.</td><td><code>"Carlos Souza"</code></td></tr>
+        <tr><td><code>status_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>Status geral (<code>lookup_statuses</code>).</td><td><code>2</code></td></tr>
+        <tr><td><code>entry_registration</code></td><td>VARCHAR(100)</td><td></td><td>Sim</td><td>Número de registro de entrada.</td><td><code>"RE-2024-099"</code></td></tr>
+        <tr><td><code>vehicle_plates</code></td><td>VARCHAR(20)</td><td></td><td>Sim</td><td>Placa do veículo.</td><td><code>"BRA2E19"</code></td></tr>
+        <tr><td><code>transport_document</code></td><td>VARCHAR(100)</td><td></td><td>Sim</td><td>Número do documento de transporte (CTe, AWB).</td><td><code>"CTE123456"</code></td></tr>
+        <tr><td><code>modality_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>Modalidade (<code>lookup_modalities</code>).</td><td><code>1</code></td></tr>
+        <tr><td><code>operation_type_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>Tipo de operação (<code>lookup_operation_types</code>).</td><td><code>1</code></td></tr>
+        <tr><td><code>unit_type_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>Tipo de unidade de carga (<code>lookup_unit_types</code>).</td><td><code>1</code></td></tr>
+        <tr><td><code>container_type_id</code></td><td>INT</td><td>FK</td><td>Sim</td><td>Tipo de contêiner (<code>lookup_container_types</code>).</td><td><code>2</code></td></tr>
+        <tr><td><code>verified_length</code></td><td>DECIMAL(10,2)</td><td></td><td>Sim</td><td>Comprimento verificado (metros).</td><td><code>12.02</code></td></tr>
+        <tr><td><code>verified_width</code></td><td>DECIMAL(10,2)</td><td></td><td>Sim</td><td>Largura verificada (metros).</td><td><code>2.35</code></td></tr>
+        <tr><td><code>verified_height</code></td><td>DECIMAL(10,2)</td><td></td><td>Sim</td><td>Altura verificada (metros).</td><td><code>2.69</code></td></tr>
+        <tr><td><code>start_datetime</code></td><td>DATETIME</td><td></td><td>Não</td><td>Início da inspeção.</td><td><code>"2025-07-15 08:00"</code></td></tr>
+        <tr><td><code>end_datetime</code></td><td>DATETIME</td><td></td><td>Sim</td><td>Fim da inspeção.</td><td><code>"2025-07-15 08:45"</code></td></tr>
+        <tr><td><code>driver_name</code></td><td>VARCHAR(255)</td><td></td><td>Não</td><td>Nome do motorista.</td><td><code>"José da Silva"</code></td></tr>
+        <tr><td><code>driver_signature_path</code></td><td>VARCHAR(512)</td><td></td><td>Sim</td><td>Assinatura do motorista.</td><td><code>"/sig/driver.png"</code></td></tr>
+        <tr><td><code>inspector_signature_path</code></td><td>VARCHAR(512)</td><td></td><td>Sim</td><td>Assinatura do inspetor.</td><td><code>"/sig/inspector.png"</code></td></tr>
+        <tr><td><code>seal_uaga_post_inspection</code></td><td>VARCHAR(100)</td><td></td><td>Sim</td><td>Nº do lacre UAGA pós-inspeção.</td><td><code>"LACRE1234"</code></td></tr>
+        <tr><td><code>seal_uaga_post_loading</code></td><td>VARCHAR(100)</td><td></td><td>Sim</td><td>Nº do lacre UAGA pós-carregamento.</td><td><code>"LACRE5678"</code></td></tr>
+        <tr><td><code>seal_shipper</code></td><td>VARCHAR(100)</td><td></td><td>Sim</td><td>Lacre do armador (shipper).</td><td><code>"SHIPPER321"</code></td></tr>
+        <tr><td><code>seal_rfb</code></td><td>VARCHAR(100)</td><td></td><td>Sim</td><td>Lacre Receita Federal (RFB).</td><td><code>"RFB987"</code></td></tr>
+        <tr><td><code>seal_verification_rfb_status_id</code></td><td>INT</td><td>FK</td><td>Sim</td><td>Status do lacre RFB (<code>lookup_seal_verification_statuses</code>).</td><td><code>1</code></td></tr>
+        <tr><td><code>seal_verification_shipper_status_id</code></td><td>INT</td><td>FK</td><td>Sim</td><td>Status do lacre Shipper (<code>lookup_seal_verification_statuses</code>).</td><td><code>1</code></td></tr>
+        <tr><td><code>seal_verification_tape_status_id</code></td><td>INT</td><td>FK</td><td>Sim</td><td>Status da fita lacre UAGA (<code>lookup_seal_verification_statuses</code>).</td><td><code>1</code></td></tr>
+        <tr><td><code>seal_verification_responsible_name</code></td><td>VARCHAR(255)</td><td></td><td>Sim</td><td>Responsável pela verificação de lacres.</td><td><code>"Ana Souza"</code></td></tr>
+        <tr><td><code>seal_verification_signature_path</code></td><td>VARCHAR(512)</td><td></td><td>Sim</td><td>Assinatura do responsável pela verificação.</td><td><code>"/sig/verifier.png"</code></td></tr>
+        <tr><td><code>seal_verification_date</code></td><td>DATE</td><td></td><td>Sim</td><td>Data da verificação de lacres.</td><td><code>"2025-07-15"</code></td></tr>
+        <tr><td><code>observations</code></td><td>TEXT</td><td></td><td>Sim</td><td>Observações gerais.</td><td><code>"Sem inconformidades."</code></td></tr>
+        <tr><td><code>action_taken</code></td><td>TEXT</td><td></td><td>Sim</td><td>Providências tomadas.</td><td><code>"Lacre substituído."</code></td></tr>
+        <tr><td><code>generated_pdf_path</code></td><td>VARCHAR(512)</td><td></td><td>Sim</td><td>PDF gerado da inspeção.</td><td><code>"/reports/insp_2024001.pdf"</code></td></tr>
+        <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td></td><td>Não</td><td>Data/hora de criação.</td><td><code>"2025-07-15 08:00"</code></td></tr>
+        <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td></td><td>Não</td><td>Data/hora de atualização.</td><td><code>"2025-07-15 08:45"</code></td></tr>
     </tbody>
 </table>
 
 <h4><strong><code>inspection_checklist_items</code></strong></h4>
-<p>Armazena o status de cada um dos 18 pontos para uma inspeção específica.</p>
+<p>Relação dos pontos verificados em cada inspeção.</p>
 <table border="1" style="border-collapse: collapse; width:100%;">
     <thead>
-        <tr><th align="left">Nome da Coluna</th><th align="left">Tipo de Dado</th><th align="left">Chave</th><th align="left">Nulo?</th><th align="left">Descrição / Regra de Negócio</th><th align="left">Exemplo</th></tr>
+        <tr><th align="left">Nome da Coluna</th><th align="left">Tipo de Dado</th><th align="left">Chave</th><th align="left">Nulo?</th><th align="left">Descrição</th><th align="left">Exemplo</th></tr>
     </thead>
     <tbody>
-        <tr><td><code>id</code></td><td>INT</td><td>PK</td><td>Não</td><td>Identificador único do item de checklist.</td><td><code>5432</code></td></tr>
-        <tr><td><code>inspection_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID da inspeção (<code>inspections</code>) a que este item pertence.</td><td><code>2024001</code></td></tr>
-        <tr><td><code>master_point_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID do ponto de inspeção (<code>master_inspection_points</code>).</td><td><code>11</code> (<code>PNEUS</code>)</td></tr>
-        <tr><td><code>status_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID do status deste item (<code>lookup_checklist_item_statuses</code>).</td><td><code>2</code> (<code>CONFORME</code>)</td></tr>
-        <tr><td><code>observations</code></td><td>TEXT</td><td></td><td>Sim</td><td>Observações do inspetor para este ponto.</td><td><code>"Pneu dianteiro com leve desgaste."</code></td></tr>
+        <tr><td><code>id</code></td><td>INT</td><td>PK</td><td>Não</td><td>Identificador único.</td><td><code>5001</code></td></tr>
+        <tr><td><code>inspection_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>Inspeção relacionada.</td><td><code>2024001</code></td></tr>
+        <tr><td><code>master_point_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>Ponto de inspeção (<code>master_inspection_points</code>).</td><td><code>11</code></td></tr>
+        <tr><td><code>status_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>Status (<code>lookup_checklist_item_statuses</code>).</td><td><code>2</code></td></tr>
+        <tr><td><code>observations</code></td><td>TEXT</td><td></td><td>Sim</td><td>Observações para este ponto.</td><td><code>"Tudo conforme."</code></td></tr>
+        <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td></td><td>Não</td><td>Data/hora de criação.</td><td><code>"2025-07-15 08:05"</code></td></tr>
+        <tr><td><code>updated_at</code></td><td>TIMESTAMP</td><td></td><td>Não</td><td>Data/hora de atualização.</td><td><code>"2025-07-15 08:05"</code></td></tr>
     </tbody>
 </table>
 
 <h4><strong><code>item_evidences</code></strong></h4>
-<p>Armazena as evidências (imagens) para cada item de checklist.</p>
+<p>Evidências (imagens) de cada item do checklist.</p>
 <table border="1" style="border-collapse: collapse; width:100%;">
     <thead>
-        <tr><th align="left">Nome da Coluna</th><th align="left">Tipo de Dado</th><th align="left">Chave</th><th align="left">Nulo?</th><th align="left">Descrição / Regra de Negócio</th><th align="left">Exemplo</th></tr>
+        <tr><th align="left">Nome da Coluna</th><th align="left">Tipo de Dado</th><th align="left">Chave</th><th align="left">Nulo?</th><th align="left">Descrição</th><th align="left">Exemplo</th></tr>
     </thead>
     <tbody>
-        <tr><td><code>id</code></td><td>INT</td><td>PK</td><td>Não</td><td>Identificador único da evidência.</td><td><code>9876</code></td></tr>
-        <tr><td><code>item_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID do item de checklist (<code>inspection_checklist_items</code>).</td><td><code>5432</code></td></tr>
-        <tr><td><code>file_path</code></td><td>VARCHAR(512)</td><td></td><td>Não</td><td>Caminho para o arquivo de imagem no storage.</td><td><code>"/evidences/insp_2024001_p11_01.jpg"</code></td></tr>
+        <tr><td><code>id</code></td><td>INT</td><td>PK</td><td>Não</td><td>ID único da evidência.</td><td><code>9001</code></td></tr>
+        <tr><td><code>item_id</code></td><td>INT</td><td>FK</td><td>Não</td><td>ID do item de checklist.</td><td><code>5001</code></td></tr>
+        <tr><td><code>file_path</code></td><td>VARCHAR(512)</td><td></td><td>Não</td><td>Local do arquivo.</td><td><code>"/evidences/5001_img1.jpg"</code></td></tr>
+        <tr><td><code>file_name</code></td><td>VARCHAR(255)</td><td></td><td>Não</td><td>Nome do arquivo.</td><td><code>"pneu_frontal.jpg"</code></td></tr>
+        <tr><td><code>file_size</code></td><td>INT</td><td></td><td>Não</td><td>Tamanho em bytes.</td><td><code>245678</code></td></tr>
+        <tr><td><code>mime_type</code></td><td>VARCHAR(100)</td><td></td><td>Não</td><td>Tipo MIME.</td><td><code>"image/jpeg"</code></td></tr>
+        <tr><td><code>created_at</code></td><td>TIMESTAMP</td><td></td><td>Não</td><td>Data/hora de envio.</td><td><code>"2025-07-15 08:10"</code></td></tr>
     </tbody>
 </table>
+
 </details>
+
 
 <h3>🏗️ Estrutura de Projeto Unificada</h3>
 <p>O projeto é organizado em uma estrutura multi-repo, onde cada serviço principal (backend, frontend, banco de dados) reside em seu próprio subdiretório dentro da pasta raiz <code>checklistBalanca/</code>. Esta abordagem promove a separação clara das responsabilidades.</p>

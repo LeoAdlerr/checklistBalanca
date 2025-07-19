@@ -8,6 +8,7 @@ import { ItemEvidence } from 'src/domain/models/item-evidence.model';
 import { InspectionEntity } from '../entities/inspection.entity';
 import { InspectionChecklistItemEntity } from '../entities/inspection-checklist-item.entity';
 import { ItemEvidenceEntity } from '../entities/item-evidence.entity';
+import { CreateInspectionDto } from 'src/api/dtos/create-inspection.dto';
 
 @Injectable()
 export class InspectionRepository implements InspectionRepositoryPort {
@@ -106,17 +107,10 @@ export class InspectionRepository implements InspectionRepositoryPort {
 
   async findAll(): Promise<Inspection[]> {
     const inspectionEntities = await this.inspectionRepo.find({
-      // Para a lista geral, é uma boa prática carregar o status de cada inspeção.
-      relations: {
-        status: true,
-      },
-      // E também ordenar os resultados, trazendo os mais recentes primeiro.
       order: {
         createdAt: 'DESC',
       },
     });
-
-    // Usamos o 'map' para converter cada entidade do banco para o nosso modelo de domínio.
     return inspectionEntities.map(entity => this.mapToDomainInspection(entity));
   }
 
@@ -124,13 +118,60 @@ export class InspectionRepository implements InspectionRepositoryPort {
     const inspectionEntity = await this.inspectionRepo.findOne({
       where: { id: id },
       relations: {
-        status: true, // Carrega o status principal da inspeção.
-        items: {      // Carrega os itens do checklist...
-          status: true, // ...e também o status de cada um desses itens.
+        items: {
+          status: true,
+          evidences: true,
+          masterPoint: true,
+        },
+      },
+      order: {
+        items: {
+          masterPointId: 'ASC',
         },
       },
     });
 
     return inspectionEntity ? this.mapToDomainInspection(inspectionEntity) : null;
+  }
+
+  async findExistingInspection(inspectionData: CreateInspectionDto): Promise<Inspection | null> {
+    // Construímos a cláusula 'where' dinamicamente para lidar com campos opcionais.
+    const whereClause: any = {
+      statusId: 1, // Apenas inspeções "EM ANDAMENTO"
+      inspectorName: inspectionData.inspectorName,
+      driverName: inspectionData.driverName,
+      modalityId: inspectionData.modalityId,
+      operationTypeId: inspectionData.operationTypeId,
+      unitTypeId: inspectionData.unitTypeId,
+    };
+
+    // Adiciona os campos opcionais à busca somente se eles foram fornecidos
+    if (inspectionData.entryRegistration) {
+      whereClause.entryRegistration = inspectionData.entryRegistration;
+    }
+    if (inspectionData.vehiclePlates) {
+      whereClause.vehiclePlates = inspectionData.vehiclePlates;
+    }
+    if (inspectionData.transportDocument) {
+      whereClause.transportDocument = inspectionData.transportDocument;
+    }
+    if (inspectionData.containerTypeId) {
+      whereClause.containerTypeId = inspectionData.containerTypeId;
+    }
+    if (inspectionData.verifiedLength) {
+      whereClause.verifiedLength = inspectionData.verifiedLength;
+    }
+    if (inspectionData.verifiedWidth) {
+      whereClause.verifiedWidth = inspectionData.verifiedWidth;
+    }
+    if (inspectionData.verifiedHeight) {
+      whereClause.verifiedHeight = inspectionData.verifiedHeight;
+    }
+
+    const existingEntity = await this.inspectionRepo.findOne({
+      where: whereClause,
+    });
+
+    return existingEntity ? this.mapToDomainInspection(existingEntity) : null;
   }
 }

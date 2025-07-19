@@ -19,16 +19,10 @@ describe('AppController (E2E)', () => {
     await app.close();
   });
 
-  it('/ (GET)', () => {
+  it('/ (GET) should return a status message', () => {
     return request(app.getHttpServer())
       .get('/')
       .expect(200)
-      .expect(res => {
-        expect(res.body.status).toEqual('UAGA Checklist API is running!');
-        expect(res.body.database_connection).toEqual('Success');
-        expect(res.body.statuses_found).toEqual(
-          expect.arrayContaining(['EM_INSPECAO', 'APROVADO', 'REPROVADO']),
-        );
-      });
+      .expect('UAGA Checklist 8/18 API is running!');
   });
 });

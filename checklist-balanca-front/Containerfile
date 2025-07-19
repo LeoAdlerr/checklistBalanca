@@ -1,0 +1,22 @@
+FROM node:20-alpine
+
+# Ferramenta para corrigir quebras de linha do Windows
+RUN apk add --no-cache dos2unix
+
+WORKDIR /app
+
+# Copia os manifestos de dependência primeiro para aproveitar o cache do Docker
+COPY package.json yarn.lock ./
+
+# Copia todo o resto do código
+COPY . .
+
+# Garante que o script de entrada seja executável e tenha o formato correto
+RUN dos2unix ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
+# A porta padrão do Vite é a 3000
+EXPOSE 3000
+
+# Define o script como o comando de entrada
+CMD ["./entrypoint.sh"]
