@@ -4,6 +4,7 @@ import { createVuetify } from 'vuetify';
 import { createTestingPinia } from '@pinia/testing';
 import { useInspectionsStore } from '@/stores/inspections';
 import NewInspectionPage from './new.vue';
+import type { Lookup } from '@/models';
 
 // Mock do vue-router
 const mockRouter = {
@@ -16,7 +17,6 @@ vi.mock('vue-router/auto', () => ({
 const vuetify = createVuetify();
 
 describe('Tela 2: Nova Inspeção (new.vue)', () => {
-  
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -31,8 +31,8 @@ describe('Tela 2: Nova Inspeção (new.vue)', () => {
     });
     expect(inspectionsStore.fetchFormLookups).toHaveBeenCalledTimes(1);
   });
-  
-  it('deve atualizar o objeto do formulário ao preencher um campo', async () => {
+
+  it('deve atualizar o formulário ao preencher um campo de texto', async () => {
     const wrapper = mount(NewInspectionPage, {
       global: {
         plugins: [vuetify, createTestingPinia({ createSpy: vi.fn })],
@@ -56,7 +56,7 @@ describe('Tela 2: Nova Inspeção (new.vue)', () => {
       },
     });
     
-    // Simulamos que a validação do Vuetify retornou 'true'
+    // Simulamos que a validação do Vuetify, quando chamada, retornará 'true'
     const formRefMock = {
       validate: vi.fn().mockResolvedValue({ valid: true }),
     };
@@ -83,7 +83,7 @@ describe('Tela 2: Nova Inspeção (new.vue)', () => {
       },
     });
     
-    // Simulamos que a validação do Vuetify retornou 'false'
+    // Simulamos que a validação do Vuetify, quando chamada, retornará 'false'
     const formRefMock = {
       validate: vi.fn().mockResolvedValue({ valid: false }),
     };
@@ -92,10 +92,9 @@ describe('Tela 2: Nova Inspeção (new.vue)', () => {
     // Act
     const submitButton = wrapper.find('[data-testid="submit-btn"]');
     await submitButton.trigger('click');
-
+    
     // Assert
     expect(formRefMock.validate).toHaveBeenCalledTimes(1);
-    // A asserção mais importante: garante que a criação NÃO foi chamada
     expect(inspectionsStore.createInspection).not.toHaveBeenCalled();
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
