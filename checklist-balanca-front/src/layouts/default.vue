@@ -1,18 +1,23 @@
 <template>
   <v-app>
     <v-app-bar color="blue-darken-4" density="compact">
-      <template v-slot:prepend>
-        <v-avatar>
-          <v-img src="@/assets/coruja-logo.png" alt="Coruja UAGA T.I."></v-img>
-        </v-avatar>
-      </template>
+      <v-tooltip text="Voltar para a página inicial" location="bottom">
+        <template #activator="{ props }">
+          <router-link to="/" v-bind="props" style="text-decoration: none">
+            <v-avatar class="cursor-pointer">
+              <v-img src="@/assets/universal-logo.png" alt="Universal Logotipo" />
+            </v-avatar>
+          </router-link>
+        </template>
+      </v-tooltip>
+
       <v-app-bar-title class="font-weight-bold">
         Sistema de Inspeção de Cargas
       </v-app-bar-title>
       <v-spacer></v-spacer>
       <template v-slot:append>
         <v-avatar size="32">
-          <v-img src="@/assets/universal-logo.png" alt="Universal Logotipo"></v-img>
+          <v-img src="@/assets/coruja-logo.png" alt="Coruja UAGA T.I."></v-img>
         </v-avatar>
       </template>
     </v-app-bar>
@@ -26,7 +31,7 @@
         <strong>Universal Armazéns Gerais e Alfandegados</strong>
       </div>
       <div class="px-4 py-2 bg-grey-darken-4 text-center w-100 text-caption">
-        Desenvolvido por Leonardo Adler da Silva © {{ new Date().getFullYear() }} — 
+        Desenvolvido por Leonardo Adler da Silva © {{ new Date().getFullYear() }} —
         <strong>Versão {{ appVersion }} (alpha)</strong>
       </div>
     </v-footer>
@@ -34,7 +39,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { version } from '@/../package.json';
-  
-  const appVersion = version;
+import { version } from '@/../package.json';
+
+const appVersion = version;
 </script>

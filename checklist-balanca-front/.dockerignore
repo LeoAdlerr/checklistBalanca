@@ -4,3 +4,5 @@ dist
 *.log
 .docker/
 .idea/
+cypress/screenshots
+cypress/videos

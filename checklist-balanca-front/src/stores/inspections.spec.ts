@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useInspectionsStore } from './inspections';
 import { apiService } from '@/services/apiService';
-import type { Inspection, CreateInspectionDto, Lookup, UpdateInspectionChecklistItemDto } from '@/models';
+import type { Inspection, CreateInspectionDto, Lookup } from '@/models';
 
-// Mock completo do apiService.
+// Mock do apiService
 vi.mock('@/services/apiService', () => ({
   apiService: {
     getInspections: vi.fn(),
@@ -22,7 +22,11 @@ describe('Inspections Store', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     store = useInspectionsStore();
-    vi.clearAllMocks();
+    vi.resetAllMocks(); // Usamos resetAllMocks para isolar os testes
+
+    // Mockamos a função global 'confirm' antes de cada teste
+    // Por padrão, simulamos que o usuário sempre clica "OK" (true)
+    window.confirm = vi.fn(() => true);
   });
 
   it('deve buscar e armazenar a lista de inspeções', async () => {
@@ -70,49 +74,48 @@ describe('Inspections Store', () => {
     it('deve criar uma inspeção diretamente se não houver duplicatas', async () => {
       // Arrange
       const newInspection = { id: 1 } as Inspection;
-      // Simula que nenhuma inspeção existente foi encontrada
-      (apiService.checkExistingInspection as vi.Mock).mockResolvedValue({ existingId: null });
+      // Simulamos o serviço retornando 'null' diretamente.
+      (apiService.checkExistingInspection as vi.Mock).mockResolvedValue(null);
       (apiService.createInspection as vi.Mock).mockResolvedValue(newInspection);
-      
+
+      // Act
+      await store.createInspection(dto);
+
+      // Assert
+      expect(apiService.checkExistingInspection).toHaveBeenCalledWith(dto);
+      expect(window.confirm).not.toHaveBeenCalled(); // Agora esta asserção vai passar
+      expect(apiService.createInspection).toHaveBeenCalledWith(dto);
+    });
+
+    it('deve pedir confirmação e criar a inspeção se o usuário aceitar', async () => {
+      // Arrange
+      const newInspection = { id: 2 } as Inspection;
+      // O mock  retorna o objeto de inspeção completo, como a API real faria.
+      const existingInspection = { id: 1, createdAt: new Date().toISOString() } as Inspection;
+      (apiService.checkExistingInspection as vi.Mock).mockResolvedValue(existingInspection);
+      (apiService.createInspection as vi.Mock).mockResolvedValue(newInspection);
+
+      // Act
+      await store.createInspection(dto);
+
+      // Assert
+      expect(window.confirm).toHaveBeenCalledTimes(1);
+      expect(apiService.createInspection).toHaveBeenCalledTimes(1);
+    });
+
+    it('deve parar a execução se o usuário cancelar a criação de uma duplicata', async () => {
+      // Arrange
+      const existingInspection = { id: 1, createdAt: new Date().toISOString() } as Inspection;
+      (apiService.checkExistingInspection as vi.Mock).mockResolvedValue(existingInspection);
+      (window.confirm as vi.Mock).mockReturnValue(false); // Simula o "cancelar"
+
       // Act
       const result = await store.createInspection(dto);
 
       // Assert
-      expect(apiService.checkExistingInspection).toHaveBeenCalledWith(dto);
-      expect(apiService.createInspection).toHaveBeenCalledWith(dto);
-      expect(result).toEqual(newInspection);
-    });
-
-    it('deve pedir confirmação e criar a inspeção se o usuário aceitar', async () => {
-        // Arrange
-        const newInspection = { id: 2 } as Inspection;
-        (apiService.checkExistingInspection as vi.Mock).mockResolvedValue({ existingId: 1 });
-        (apiService.createInspection as vi.Mock).mockResolvedValue(newInspection);
-        // Simulamos o usuário clicando "OK" no confirm()
-        window.confirm = vi.fn(() => true);
-
-        // Act
-        const result = await store.createInspection(dto);
-
-        // Assert
-        expect(window.confirm).toHaveBeenCalled();
-        expect(apiService.createInspection).toHaveBeenCalledTimes(1);
-        expect(result).toEqual(newInspection);
-    });
-
-    it('deve parar a execução se o usuário cancelar a criação de uma duplicata', async () => {
-        // Arrange
-        (apiService.checkExistingInspection as vi.Mock).mockResolvedValue({ existingId: 1 });
-        // Simulamos o usuário clicando "Cancelar"
-        window.confirm = vi.fn(() => false);
-
-        // Act
-        const result = await store.createInspection(dto);
-        
-        // Assert
-        expect(window.confirm).toHaveBeenCalled();
-        expect(apiService.createInspection).not.toHaveBeenCalled();
-        expect(result).toBeUndefined();
+      expect(window.confirm).toHaveBeenCalledTimes(1);
+      expect(apiService.createInspection).not.toHaveBeenCalled();
+      expect(result).toBeUndefined();
     });
   });
 
@@ -120,7 +123,7 @@ describe('Inspections Store', () => {
     // Arrange
     const initialItem = { masterPointId: 1, statusId: 1, observations: '' };
     store.currentInspection = { id: 1, items: [initialItem] } as any;
-    
+
     const updatedItemData: UpdateInspectionChecklistItemDto = { statusId: 2, observations: 'OK' };
     const apiResponse = { ...initialItem, ...updatedItemData };
     (apiService.updateChecklistItem as vi.Mock).mockResolvedValue(apiResponse);

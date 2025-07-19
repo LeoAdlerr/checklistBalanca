@@ -1,7 +1,7 @@
 <template>
   <v-container>
     <v-card max-width="900px" class="mx-auto pa-4" elevation="2">
-      <v-card-title class="text-h5 font-weight-bold">
+      <v-card-title class="text-h5 font-weight-bold" data-testid="page-title">
         Nova Inspeção - Dados Gerais
       </v-card-title>
       <v-card-subtitle>
@@ -9,22 +9,26 @@
       </v-card-subtitle>
 
       <v-card-text class="mt-4">
-        <v-form @submit.prevent="submitForm">
+        <v-form ref="formRef" @submit.prevent="submitForm">
           <v-row>
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="form.inspectorName"
+                :rules="requiredRule"
                 label="Nome do Inspetor"
                 variant="outlined"
                 density="compact"
+                data-testid="inspector-name-input"
               ></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
               <v-text-field
                 v-model="form.driverName"
+                :rules="requiredRule"
                 label="Nome do Motorista"
                 variant="outlined"
                 density="compact"
+                data-testid="driver-name-input"
               ></v-text-field>
             </v-col>
             <v-col cols="12" md="6">
@@ -56,34 +60,40 @@
             <v-col cols="12" md="6">
               <v-select
                 v-model="form.modalityId"
+                :rules="requiredRule"
                 :items="modalities"
                 item-title="name"
                 item-value="id"
                 label="Modalidade"
                 variant="outlined"
                 density="compact"
+                data-testid="modality-select"
               ></v-select>
             </v-col>
             <v-col cols="12" md="6">
               <v-select
                 v-model="form.operationTypeId"
+                :rules="requiredRule"
                 :items="operationTypes"
                 item-title="name"
                 item-value="id"
                 label="Operação"
                 variant="outlined"
                 density="compact"
+                data-testid="operation-type-select"
               ></v-select>
             </v-col>
             <v-col cols="12" md="6">
               <v-select
                 v-model="form.unitTypeId"
+                :rules="requiredRule"
                 :items="unitTypes"
                 item-title="name"
                 item-value="id"
                 label="Tipo de Unidade"
                 variant="outlined"
                 density="compact"
+                data-testid="unit-type-select"
               ></v-select>
             </v-col>
             <v-col cols="12" md="6">
@@ -138,6 +148,7 @@
           size="large"
           :loading="isLoading"
           :disabled="isLoading"
+          data-testid="submit-btn"
           @click="submitForm"
         >
           Iniciar Checklist dos 18 Pontos
@@ -148,15 +159,18 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, reactive } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router/auto';
 import { useInspectionsStore } from '@/stores/inspections';
 import { storeToRefs } from 'pinia';
 import type { CreateInspectionDto } from '@/models/create-inspection.dto';
+import type { VForm } from 'vuetify/components';
 
 const router = useRouter();
 const inspectionsStore = useInspectionsStore();
 const { isLoading, modalities, operationTypes, unitTypes, containerTypes } = storeToRefs(inspectionsStore);
+
+const formRef = ref<VForm | null>(null);
 
 const form = reactive<Partial<CreateInspectionDto>>({
   inspectorName: '',
@@ -173,11 +187,17 @@ const form = reactive<Partial<CreateInspectionDto>>({
   verifiedHeight: undefined,
 });
 
-const submitForm = async () => {
-  // A lógica da store agora orquestra a verificação e a criação.
-  const newInspection = await inspectionsStore.createInspection(form as CreateInspectionDto);
+const requiredRule = [
+  (value: any) => !!value || 'Este campo é obrigatório.',
+];
 
-  // O componente só se preocupa com a navegação em caso de sucesso.
+const submitForm = async () => {
+  const { valid } = await formRef.value?.validate() ?? { valid: false };
+  if (!valid) {
+    return;
+  }
+  
+  const newInspection = await inspectionsStore.createInspection(form as CreateInspectionDto);
   if (newInspection) {
     router.push(`/inspections/${newInspection.id}`);
   }

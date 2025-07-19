@@ -1,14 +1,19 @@
 #!/bin/sh
-
-# Para o script imediatamente se qualquer comando falhar
 set -e
 
-echo "Frontend: Instalando dependências..."
-yarn install
+echo "📦 Frontend: Instalando dependências com lockfile..."
+yarn install --frozen-lockfile
 
-echo "Frontend: Executando testes unitários..."
+echo "🧪 Frontend: Executando testes unitários..."
 yarn test:unit
 
-echo "Frontend: Testes OK! Iniciando servidor de desenvolvimento..."
-# Usa o comando que configuramos no package.json para iniciar o Vite
+echo "--------------------------------------------------"
+echo "🔍 Cypress: Verificando a versão instalada..."
+yarn cypress --version || echo "⚠️ Cypress não está instalado corretamente"
+echo "--------------------------------------------------"
+
+echo "🚀 Frontend: Executando testes E2E..."
+yarn test:e2e
+
+echo "✅ Frontend: Testes concluídos. Iniciando servidor de desenvolvimento..."
 exec yarn start:dev
