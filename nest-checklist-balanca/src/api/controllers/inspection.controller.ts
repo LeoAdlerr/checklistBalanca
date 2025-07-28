@@ -1,28 +1,43 @@
-import { Controller, Res, Get, Post, Body, HttpCode, HttpStatus, Patch, Param, ParseIntPipe, UseInterceptors, UploadedFile, HttpException, NotFoundException } from '@nestjs/common';
+import {
+  Controller, Res, Delete, Get, Post, Body, HttpCode, HttpStatus,
+  Patch, Param, ParseIntPipe, UseInterceptors, UploadedFile,
+  HttpException, NotFoundException, Logger
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
 
+// pipes
+import { EmptyBodyValidationPipe } from '../pipes/empty-body-validation.pipe';
+
+// DTOs
 import { CreateInspectionDto } from '../dtos/create-inspection.dto';
 import { UpdateInspectionChecklistItemDto } from '../dtos/update-inspection-checklist-item.dto';
+import { UpdateInspectionDto } from '../dtos/update-inspection.dto';
+import { DeleteEvidenceDto } from '../dtos/delete-evidence.dto';
+
+// Use Cases
 import { CreateInspectionUseCase } from 'src/domain/use-cases/create-inspection.use-case';
 import { UpdateInspectionChecklistItemUseCase } from 'src/domain/use-cases/update-inspection-checklist-item.use-case';
 import { UploadEvidenceUseCase } from 'src/domain/use-cases/upload-evidence.use-case';
 import { FinalizeInspectionUseCase } from 'src/domain/use-cases/finalize-inspection.use-case';
 import { FindAllInspectionsUseCase } from 'src/domain/use-cases/find-all-inspections.use-case';
 import { FindInspectionByIdUseCase } from 'src/domain/use-cases/find-inspection-by-id.use-case';
+import { GenerateInspectionReportUseCase } from 'src/domain/use-cases/generate-inspection-report.use-case';
+import { CheckForExistingInspectionUseCase } from 'src/domain/use-cases/check-for-existing-inspection.use-case';
+import { UpdateInspectionUseCase } from 'src/domain/use-cases/update-inspection.use-case';
+import { DeleteInspectionUseCase } from 'src/domain/use-cases/delete-inspection.use-case';
+import { DeleteEvidenceUseCase } from 'src/domain/use-cases/delete-evidence.use-case';
+
+// Models
 import { Inspection } from 'src/domain/models/inspection.model';
 import { InspectionChecklistItem } from 'src/domain/models/inspection-checklist-item.model';
 import { ItemEvidence } from 'src/domain/models/item-evidence.model';
-import { GenerateInspectionReportUseCase } from 'src/domain/use-cases/generate-inspection-report.use-case';
-import { CheckForExistingInspectionUseCase } from 'src/domain/use-cases/check-for-existing-inspection.use-case';
-
 
 @ApiTags('Inspections')
 @Controller('inspections')
 export class InspectionController {
+  private readonly logger = new Logger(InspectionController.name);
   constructor(
     private readonly createInspectionUseCase: CreateInspectionUseCase,
     private readonly updateItemUseCase: UpdateInspectionChecklistItemUseCase,
@@ -32,64 +47,59 @@ export class InspectionController {
     private readonly findInspectionByIdUseCase: FindInspectionByIdUseCase,
     private readonly generateReportUseCase: GenerateInspectionReportUseCase,
     private readonly checkForExistingUseCase: CheckForExistingInspectionUseCase,
+    private readonly updateInspectionUseCase: UpdateInspectionUseCase,
+    private readonly deleteInspectionUseCase: DeleteInspectionUseCase,
+    private readonly deleteEvidenceUseCase: DeleteEvidenceUseCase,
   ) { }
 
   @Get()
   @ApiOperation({ summary: 'Listar todas as inspeções' })
-  @ApiResponse({ status: 200, description: 'Lista de inspeções retornada com sucesso.', type: [Inspection] })
-  @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: 200, type: [Inspection] })
   async findAll(): Promise<Inspection[]> {
     return this.findAllInspectionsUseCase.execute();
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Buscar uma única inspeção por seu ID' })
-  @ApiResponse({ status: 200, description: 'Inspeção encontrada com sucesso.', type: Inspection })
-  @ApiResponse({ status: 404, description: 'Inspeção não encontrada.' })
-  @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: 200, type: Inspection })
   async findById(@Param('id', ParseIntPipe) id: number): Promise<Inspection> {
-    try {
-      return await this.findInspectionByIdUseCase.execute(id);
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw new NotFoundException(error.message);
-      }
-      throw error;
-    }
+    return this.findInspectionByIdUseCase.execute(id);
   }
 
   @Post('check-existing')
   @ApiOperation({ summary: 'Verifica se uma inspeção similar já existe' })
-  @ApiResponse({ status: 200, description: 'Uma inspeção similar e em andamento foi encontrada.' })
-  @ApiResponse({ status: 404, description: 'Nenhuma inspeção similar em andamento foi encontrada.' })
-  @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: 200 })
+  @ApiResponse({ status: 404 })
   async checkExisting(@Body() dto: CreateInspectionDto): Promise<Inspection> {
     const existingInspection = await this.checkForExistingUseCase.execute(dto);
-    
     if (!existingInspection) {
-      // Se o caso de uso retornar nulo, nós lançamos uma exceção 404.
       throw new NotFoundException('Nenhuma inspeção similar em andamento foi encontrada.');
     }
-
-    // Se uma inspeção for encontrada, a retornamos com status 200 OK.
     return existingInspection;
   }
 
   @Post()
   @ApiOperation({ summary: 'Criar uma nova inspeção' })
-  @ApiResponse({ status: 201, description: 'A inspeção foi criada com sucesso.', type: Inspection })
-  @ApiResponse({ status: 400, description: 'Dados de entrada inválidos.' })
+  @ApiResponse({ status: 201, type: Inspection })
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createInspectionDto: CreateInspectionDto): Promise<Inspection> {
     return this.createInspectionUseCase.execute(createInspectionDto);
   }
 
+  @Patch(':id')
+  @ApiOperation({ summary: 'Atualizar os atributos de uma inspeção' })
+  @ApiResponse({ status: 200, type: Inspection })
+  @HttpCode(HttpStatus.OK)
+  async update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body(EmptyBodyValidationPipe) dto: UpdateInspectionDto
+  ): Promise<Inspection> {
+    return this.updateInspectionUseCase.execute(id, dto);
+  }
+
   @Patch(':inspectionId/points/:pointNumber')
   @ApiOperation({ summary: 'Atualizar o status e observações de um item do checklist' })
-  @ApiResponse({ status: 200, description: 'Item do checklist atualizado com sucesso.', type: InspectionChecklistItem })
-  @ApiResponse({ status: 400, description: 'Dados de entrada inválidos ou status não permitido.' })
-  @ApiResponse({ status: 404, description: 'Inspeção ou item não encontrado.' })
-  @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: 200, type: InspectionChecklistItem })
   async updateItem(
     @Param('inspectionId', ParseIntPipe) inspectionId: number,
     @Param('pointNumber', ParseIntPipe) pointNumber: number,
@@ -98,88 +108,58 @@ export class InspectionController {
     return this.updateItemUseCase.execute(inspectionId, pointNumber, updateDto);
   }
 
+  @Post(':inspectionId/points/:pointNumber/evidence')
+  @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Anexar uma evidência (imagem) a um item do checklist' })
   @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    description: 'Arquivo de imagem para ser enviado (tamanho máximo: 5MB).',
-    schema: {
-      type: 'object',
-      properties: {
-        file: {
-          type: 'string',
-          format: 'binary',
-        },
-      },
-    },
-  })
-  @ApiResponse({ status: 201, description: 'Evidência anexada com sucesso.' })
-  @ApiResponse({ status: 400, description: 'Arquivo não enviado ou formato não suportado (apenas imagens).' })
-  @Post(':inspectionId/points/:pointNumber/evidence')
-  @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/tmp',
-        filename: (req, file, cb) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-        },
-      }),
-      fileFilter: (req, file, cb) => {
-        if (file.mimetype && file.mimetype.startsWith('image/')) {
-          cb(null, true);
-        } else {
-          cb(new HttpException('Apenas arquivos de imagem são permitidos!', HttpStatus.BAD_REQUEST), false);
-        }
-      },
-      limits: {
-        fileSize: 5 * 1024 * 1024,
-      },
-    }),
-  )
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiResponse({ status: 201, type: ItemEvidence })
   async uploadEvidence(
     @Param('inspectionId', ParseIntPipe) inspectionId: number,
     @Param('pointNumber', ParseIntPipe) pointNumber: number,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<ItemEvidence> {
+    this.logger.debug({ message: 'Objeto FILE recebido no Controller', file });
     if (!file) {
-      throw new HttpException('Arquivo não enviado ou inválido.', HttpStatus.BAD_REQUEST);
+      throw new HttpException('Arquivo não enviado ou o tipo não é suportado (apenas imagens).', HttpStatus.BAD_REQUEST);
     }
     return this.uploadEvidenceUseCase.execute(inspectionId, pointNumber, file);
   }
 
+  @Delete(':inspectionId/points/:pointNumber/evidence')
+  @ApiOperation({ summary: 'Apagar uma evidência (imagem) específica de um ponto' })
+  @ApiResponse({ status: 200, description: 'Evidência apagada com sucesso.' })
+  async deleteEvidence(
+    @Param('inspectionId', ParseIntPipe) inspectionId: number,
+    @Param('pointNumber', ParseIntPipe) pointNumber: number,
+    @Body() dto: DeleteEvidenceDto,
+  ): Promise<{ message: string }> {
+    await this.deleteEvidenceUseCase.execute(inspectionId, pointNumber, dto.fileName);
+    return { message: `Evidência "${dto.fileName}" apagada com sucesso.` };
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Apagar uma inspeção (apenas se estiver "EM INSPEÇÃO")' })
+  @ApiResponse({ status: 200, description: 'Inspeção apagada com sucesso.' })
+  async delete(@Param('id', ParseIntPipe) id: number): Promise<{ message: string }> {
+    await this.deleteInspectionUseCase.execute(id);
+    return { message: `Inspeção com ID ${id} apagada com sucesso.` };
+  }
+
   @Patch(':id/finalize')
   @ApiOperation({ summary: 'Finalizar uma inspeção' })
-  @ApiResponse({ status: 200, description: 'Inspeção finalizada com sucesso. O status será APROVADO ou REPROVADO.', type: Inspection })
-  @ApiResponse({ status: 400, description: 'Não é possível finalizar, pois existem itens pendentes.' })
-  @ApiResponse({ status: 404, description: 'Inspeção não encontrada.' })
-  @HttpCode(HttpStatus.OK)
+  @ApiResponse({ status: 200, type: Inspection })
   async finalize(@Param('id', ParseIntPipe) id: number): Promise<Inspection> {
     return this.finalizeInspectionUseCase.execute(id);
   }
 
   @Get(':id/report/pdf')
   @ApiOperation({ summary: 'Gerar e baixar o relatório de uma inspeção em PDF' })
-  @ApiResponse({ status: 200, description: 'PDF gerado com sucesso.' })
-  @ApiResponse({ status: 404, description: 'Inspeção não encontrada.' })
-  @ApiResponse({ status: 400, description: 'Não é possível gerar o relatório, pois a inspeção está incompleta.' })
-  async generateReport(
-    @Param('id', ParseIntPipe) id: number,
-    @Res() res: Response,
-  ): Promise<void> {
-
-    // 1. Chama o caso de uso para gerar o buffer do PDF
+  @ApiResponse({ status: 200 })
+  async generateReport(@Param('id', ParseIntPipe) id: number, @Res() res: Response): Promise<void> {
     const pdfBuffer = await this.generateReportUseCase.execute(id);
-
-    // 2. Define os cabeçalhos HTTP para forçar o download no navegador
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="inspecao-${id}.pdf"`,
-    );
-
-    // 3. Envia o buffer do PDF como resposta
+    res.setHeader('Content-Disposition', `attachment; filename="inspecao-${id}.pdf"`);
     res.send(pdfBuffer);
   }
 }

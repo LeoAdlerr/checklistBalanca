@@ -1,9 +1,17 @@
-import { Module } from '@nestjs/common';
+import { Module, HttpException, HttpStatus } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PdfModule } from '../infra/pdf/pdf.module';
 import { InspectionController } from '../api/controllers/inspection.controller';
+import { MulterModule } from '@nestjs/platform-express';
+import * as path from 'path';
 
-// Importe TODAS as interfaces e implementações dos Use Cases
+// pipes
+import { EmptyBodyValidationPipe } from '../api/pipes/empty-body-validation.pipe';
+
+// Importação do novo módulo centralizado
+import { FileSystemModule } from '../infra/file-system/file-system.module';
+
+// Use Cases (Interfaces e Implementações)
 import { CreateInspectionUseCase } from '../domain/use-cases/create-inspection.use-case';
 import { CreateInspectionUseCaseImpl } from '../domain/use-cases/impl/create-inspection.use-case.impl';
 import { UpdateInspectionChecklistItemUseCase } from '../domain/use-cases/update-inspection-checklist-item.use-case';
@@ -20,17 +28,21 @@ import { GenerateInspectionReportUseCase } from '../domain/use-cases/generate-in
 import { GenerateInspectionReportUseCaseImpl } from '../domain/use-cases/impl/generate-inspection-report.use-case.impl';
 import { CheckForExistingInspectionUseCase } from '../domain/use-cases/check-for-existing-inspection.use-case';
 import { CheckForExistingInspectionUseCaseImpl } from '../domain/use-cases/impl/check-for-existing-inspection.use-case.impl';
+import { UpdateInspectionUseCase } from '../domain/use-cases/update-inspection.use-case';
+import { UpdateInspectionUseCaseImpl } from '../domain/use-cases/impl/update-inspection.use-case.impl';
+import { DeleteInspectionUseCase } from '../domain/use-cases/delete-inspection.use-case';
+import { DeleteInspectionUseCaseImpl } from '../domain/use-cases/impl/delete-inspection.use-case.impl';
+import { DeleteEvidenceUseCase } from '../domain/use-cases/delete-evidence.use-case';
+import { DeleteEvidenceUseCaseImpl } from '../domain/use-cases/impl/delete-evidence.use-case.impl';
 
-
-// Ports e Implementações
+// Ports e Repositories
 import { InspectionRepositoryPort } from '../domain/repositories/inspection.repository.port';
 import { InspectionRepository } from '../infra/typeorm/repositories/inspection.repository';
 import { MasterInspectionPointRepositoryPort } from '../domain/repositories/master-inspection-point.repository.port';
 import { MasterInspectionPointRepository } from '../infra/typeorm/repositories/master-inspection-point.repository';
 import { FileSystemPort } from '../domain/ports/file-system.port';
-import { FileSystemService } from '../infra/file-system/file-system.service';
 
-// entidades
+// Entidades do TypeORM
 import { InspectionEntity } from '../infra/typeorm/entities/inspection.entity';
 import { InspectionChecklistItemEntity } from '../infra/typeorm/entities/inspection-checklist-item.entity';
 import { ItemEvidenceEntity } from '../infra/typeorm/entities/item-evidence.entity';
@@ -59,55 +71,45 @@ import { LookupStatusEntity } from '../infra/typeorm/entities/lookup-status.enti
       LookupStatusEntity,
     ]),
     PdfModule,
+    //  Importamos o FileSystemModule para ter acesso aos seus providers exportados
+    FileSystemModule,
+    MulterModule.registerAsync({
+      // A injeção de dependência é explícita
+      imports: [FileSystemModule], 
+      useFactory: async (fsService: FileSystemPort) => {
+        const tempDir = path.join(process.cwd(), 'uploads', 'tmp');
+        await fsService.createDirectoryIfNotExists(tempDir);
+        return {
+          dest: tempDir,
+          fileFilter: (req, file, cb) => {
+            if (file.mimetype && file.mimetype.startsWith('image/')) {
+              cb(null, true);
+            } else {
+              cb(null, false);
+            }
+          },
+          limits: { fileSize: 5 * 1024 * 1024 },
+        };
+      },
+      inject: [FileSystemPort],
+    }),
   ],
   controllers: [InspectionController],
   providers: [
-    {
-      provide: CreateInspectionUseCase,
-      useClass: CreateInspectionUseCaseImpl,
-    },
-    {
-      provide: UpdateInspectionChecklistItemUseCase,
-      useClass: UpdateInspectionChecklistItemUseCaseImpl,
-    },
-    {
-      provide: UploadEvidenceUseCase,
-      useClass: UploadEvidenceUseCaseImpl,
-    },
-    {
-      provide: FinalizeInspectionUseCase,
-      useClass: FinalizeInspectionUseCaseImpl,
-    },
-    {
-      provide: FindAllInspectionsUseCase,
-      useClass: FindAllInspectionsUseCaseImpl,
-    },
-    {
-      provide: FindInspectionByIdUseCase,
-      useClass: FindInspectionByIdUseCaseImpl,
-    },
-    {
-      provide: GenerateInspectionReportUseCase,
-      useClass: GenerateInspectionReportUseCaseImpl,
-    },
-    {
-      provide: CheckForExistingInspectionUseCase,
-      useClass: CheckForExistingInspectionUseCaseImpl,
-    },
-    //implementações de Ports e Repositories 
-    {
-      provide: InspectionRepositoryPort,
-      useClass: InspectionRepository,
-    },
-    {
-      provide: MasterInspectionPointRepositoryPort,
-      useClass: MasterInspectionPointRepository,
-    },
-    {
-      provide: FileSystemPort,
-      useClass: FileSystemService,
-    },
+    { provide: CreateInspectionUseCase, useClass: CreateInspectionUseCaseImpl },
+    { provide: UpdateInspectionChecklistItemUseCase, useClass: UpdateInspectionChecklistItemUseCaseImpl },
+    { provide: UploadEvidenceUseCase, useClass: UploadEvidenceUseCaseImpl },
+    { provide: FinalizeInspectionUseCase, useClass: FinalizeInspectionUseCaseImpl },
+    { provide: FindAllInspectionsUseCase, useClass: FindAllInspectionsUseCaseImpl },
+    { provide: FindInspectionByIdUseCase, useClass: FindInspectionByIdUseCaseImpl },
+    { provide: GenerateInspectionReportUseCase, useClass: GenerateInspectionReportUseCaseImpl },
+    { provide: CheckForExistingInspectionUseCase, useClass: CheckForExistingInspectionUseCaseImpl },
+    { provide: InspectionRepositoryPort, useClass: InspectionRepository },
+    { provide: MasterInspectionPointRepositoryPort, useClass: MasterInspectionPointRepository },
+    { provide: UpdateInspectionUseCase, useClass: UpdateInspectionUseCaseImpl },
+    { provide: DeleteInspectionUseCase, useClass: DeleteInspectionUseCaseImpl },
+    { provide: DeleteEvidenceUseCase, useClass: DeleteEvidenceUseCaseImpl },
+    EmptyBodyValidationPipe,
   ],
 })
-
 export class InspectionModule {}

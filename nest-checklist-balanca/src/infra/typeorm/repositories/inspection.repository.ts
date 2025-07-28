@@ -115,23 +115,29 @@ export class InspectionRepository implements InspectionRepositoryPort {
   }
 
   async findById(id: number): Promise<Inspection | null> {
-    const inspectionEntity = await this.inspectionRepo.findOne({
+    const entity = await this.inspectionRepo.findOne({
       where: { id: id },
       relations: {
+        // Relações diretas da Inspeção
+        status: true,
+        modality: true,
+        operationType: true,
+        unitType: true,
+        containerType: true,
         items: {
           status: true,
-          evidences: true,
           masterPoint: true,
+          evidences: true, // <-- Carrega as evidências de cada item
         },
       },
       order: {
         items: {
-          masterPointId: 'ASC',
+          masterPointId: 'ASC', // Ordena os itens por número do ponto
         },
       },
     });
 
-    return inspectionEntity ? this.mapToDomainInspection(inspectionEntity) : null;
+    return entity ? this.mapToDomainInspection(entity) : null;
   }
 
   async findExistingInspection(inspectionData: CreateInspectionDto): Promise<Inspection | null> {
@@ -174,4 +180,29 @@ export class InspectionRepository implements InspectionRepositoryPort {
 
     return existingEntity ? this.mapToDomainInspection(existingEntity) : null;
   }
+
+  async delete(id: number): Promise<void> {
+    await this.inspectionRepo.delete(id);
+  }
+
+  async findEvidenceById(id: number): Promise<ItemEvidence | null> {
+    return this.evidenceRepo.findOneBy({ id });
+  }
+
+  async deleteEvidence(id: number): Promise<void> {
+    await this.evidenceRepo.delete(id);
+  }
+
+  async findEvidenceByFileName(
+  inspectionId: number,
+  pointNumber: number,
+  fileName: string,
+): Promise<ItemEvidenceEntity | null> {
+  return this.evidenceRepo.createQueryBuilder('evidence')
+    .innerJoin('evidence.checklistItem', 'item') 
+    .where('item.inspectionId = :inspectionId', { inspectionId })
+    .andWhere('item.masterPointId = :pointNumber', { pointNumber })
+    .andWhere('evidence.fileName = :fileName', { fileName })
+    .getOne();
+}
 }

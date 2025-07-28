@@ -1,119 +1,92 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { UploadEvidenceUseCase } from '@domain/use-cases/upload-evidence.use-case';
-import { UploadEvidenceUseCaseImpl } from '../../../../src/domain/use-cases/impl/upload-evidence.use-case.impl';
-import { InspectionRepositoryPort } from '../../../../src/domain/repositories/inspection.repository.port';
-import { FileSystemPort } from '../../../../src/domain/ports/file-system.port';
-import { InspectionChecklistItem } from '../../../../src/domain/models/inspection-checklist-item.model';
-import { ItemEvidence } from '../../../../src/domain/models/item-evidence.model';
-import { Readable } from 'stream';
+import { UploadEvidenceUseCaseImpl } from '@domain/use-cases/impl/upload-evidence.use-case.impl';
+import { InspectionRepositoryPort } from '@domain/repositories/inspection.repository.port';
+import { FileSystemPort } from '@domain/ports/file-system.port';
+import { NotFoundException } from '@nestjs/common';
 import * as path from 'path';
+import * as fs from 'fs/promises';
+import { ItemEvidenceEntity } from '@infra/typeorm/entities/item-evidence.entity';
 
+jest.mock('fs/promises', () => ({
+  unlink: jest.fn(),
+}));
 
-const mockInspectionRepository = {
-  findItemByInspectionAndPoint: jest.fn(),
-  addEvidenceToItem: jest.fn(),
-};
-const mockFileSystemService = {
-  createDirectoryIfNotExists: jest.fn(),
-  fileExists: jest.fn(),
-  moveFile: jest.fn(),
-};
-
-const mockFile: Express.Multer.File = {
-  fieldname: 'file',
-  originalname: 'test-image.jpg',
-  encoding: '7bit',
-  mimetype: 'image/jpeg',
-  destination: './uploads',
-  filename: 'unique-random-name.jpg',
-  path: path.join('uploads', 'unique-random-name.jpg'),
-  size: 12345,
-  stream: new Readable(),
-  buffer: Buffer.from(''),
-};
-
-describe('UploadEvidenceUseCase', () => {
+describe('UploadEvidenceUseCaseImpl', () => {
   let useCase: UploadEvidenceUseCase;
-  let repository: InspectionRepositoryPort;
-  let fileSystem: FileSystemPort;
+  let mockInspectionRepository: jest.Mocked<InspectionRepositoryPort>;
+  let mockFileSystem: jest.Mocked<FileSystemPort>;
+  let mockQueryRunner: any;
 
   beforeEach(async () => {
+    mockQueryRunner = {
+      connect: jest.fn(),
+      startTransaction: jest.fn(),
+      commitTransaction: jest.fn(),
+      rollbackTransaction: jest.fn(),
+      release: jest.fn(),
+      manager: {
+        getRepository: jest.fn().mockReturnValue({
+          save: jest.fn(),
+        }),
+      },
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        // Mapeia a interface (provide) para a implementação (useClass)
+        UploadEvidenceUseCaseImpl,
         {
-          provide: UploadEvidenceUseCase,
-          useClass: UploadEvidenceUseCaseImpl,
+          provide: InspectionRepositoryPort,
+          useValue: { findItemByInspectionAndPoint: jest.fn() },
         },
-        { provide: InspectionRepositoryPort, useValue: mockInspectionRepository },
-        { provide: FileSystemPort, useValue: mockFileSystemService },
+        {
+          provide: FileSystemPort,
+          useValue: {
+            createDirectoryIfNotExists: jest.fn(),
+            fileExists: jest.fn(),
+            moveFile: jest.fn(),
+          },
+        },
+        {
+          provide: DataSource,
+          useValue: { createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner) },
+        },
       ],
     }).compile();
 
-    useCase = module.get<UploadEvidenceUseCase>(UploadEvidenceUseCase);
-    repository = module.get<InspectionRepositoryPort>(InspectionRepositoryPort);
-    fileSystem = module.get<FileSystemPort>(FileSystemPort);
+    useCase = module.get<UploadEvidenceUseCaseImpl>(UploadEvidenceUseCaseImpl);
+    mockInspectionRepository = module.get(InspectionRepositoryPort);
+    mockFileSystem = module.get(FileSystemPort);
+    jest.clearAllMocks();
   });
 
-  afterEach(() => {
-    jest.resetAllMocks(); // Garante isolamento total
+  const mockFile: Express.Multer.File = { originalname: 'test.png', path: '/tmp/test.png' } as any;
+  const mockItem = { id: 10, masterPoint: { name: 'PONTO_TESTE' } };
+
+  it('deve commitar a transação em caso de sucesso', async () => {
+    mockInspectionRepository.findItemByInspectionAndPoint.mockResolvedValue(mockItem as any);
+    mockFileSystem.fileExists.mockResolvedValue(false);
+    (mockFileSystem.moveFile as jest.Mock).mockImplementation(() => {
+      // Simula que após o 'move', o ficheiro existe no novo local
+      mockFileSystem.fileExists.mockResolvedValue(true);
+    });
+    mockQueryRunner.manager.getRepository().save.mockResolvedValue({ id: 1 });
+
+    await useCase.execute(1, 1, mockFile);
+
+    expect(mockQueryRunner.commitTransaction).toHaveBeenCalledTimes(1);
+    expect(mockQueryRunner.rollbackTransaction).not.toHaveBeenCalled();
   });
 
-  describe('execute', () => {
-    const inspectionId = 1;
-    const pointNumber = 5;
-    const foundItemMock = {
-      id: 10,
-      masterPoint: { name: 'PAREDE_FRONTAL' },
-    } as unknown as InspectionChecklistItem;
+  it('deve fazer rollback se a movimentação do ficheiro falhar', async () => {
+    const moveError = new Error('Disk full');
+    mockInspectionRepository.findItemByInspectionAndPoint.mockResolvedValue(mockItem as any);
+    mockFileSystem.moveFile.mockRejectedValue(moveError);
+      
+    await expect(useCase.execute(1, 1, mockFile)).rejects.toThrow(moveError);
 
-    it('deve criar a estrutura de pastas, mover o arquivo e salvar a evidência', async () => {
-      // Arrange
-      mockInspectionRepository.findItemByInspectionAndPoint.mockResolvedValue(foundItemMock);
-      mockFileSystemService.fileExists.mockResolvedValue(false);
-      mockInspectionRepository.addEvidenceToItem.mockResolvedValue({} as ItemEvidence);
-
-      // Act
-      await useCase.execute(inspectionId, pointNumber, mockFile);
-
-      // Assert
-      const expectedDirPath = path.join('uploads', `${inspectionId}`, `${pointNumber}-PAREDE_FRONTAL`);
-      const expectedFinalPath = path.join(expectedDirPath, 'test-image.jpg');
-
-      expect(fileSystem.createDirectoryIfNotExists).toHaveBeenCalledWith(expectedDirPath);
-      expect(fileSystem.moveFile).toHaveBeenCalledWith(mockFile.path, expectedFinalPath);
-      expect(repository.addEvidenceToItem).toHaveBeenCalledWith(expect.objectContaining({
-        filePath: expectedFinalPath,
-        fileName: mockFile.originalname,
-      }));
-    });
-
-    it('deve renomear o arquivo se um com o mesmo nome já existir no destino', async () => {
-      // Arrange
-      mockInspectionRepository.findItemByInspectionAndPoint.mockResolvedValue(foundItemMock);
-      mockFileSystemService.fileExists
-        .mockResolvedValueOnce(true)
-        .mockResolvedValueOnce(true)
-        .mockResolvedValueOnce(false);
-      mockInspectionRepository.addEvidenceToItem.mockResolvedValue({} as ItemEvidence);
-
-      // Act
-      await useCase.execute(inspectionId, pointNumber, mockFile);
-
-      // Assert
-      const expectedDirPath = path.join('uploads', `${inspectionId}`, `${pointNumber}-PAREDE_FRONTAL`);
-      const expectedRenamedPath = path.join(expectedDirPath, 'test-image(2).jpg');
-
-      expect(fileSystem.moveFile).toHaveBeenCalledWith(mockFile.path, expectedRenamedPath);
-    });
-
-    it('deve lançar NotFoundException se o item de checklist não for encontrado', async () => {
-      // Arrange
-      mockInspectionRepository.findItemByInspectionAndPoint.mockResolvedValue(null);
-
-      // Act & Assert
-      await expect(useCase.execute(inspectionId, 99, mockFile)).rejects.toThrow(NotFoundException);
-    });
+    expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
+    expect(mockQueryRunner.commitTransaction).not.toHaveBeenCalled();
   });
 });

@@ -29,6 +29,8 @@ export class TypeormService implements TypeOrmOptionsFactory {
       password: dbConfig.password,
       database: dbConfig.database,
 
+      charset: 'UTF8MB4_GENERAL_CI',
+
       entities: [
         InspectionEntity,
         InspectionChecklistItemEntity,

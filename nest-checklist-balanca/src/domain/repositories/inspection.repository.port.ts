@@ -30,4 +30,16 @@ export abstract class InspectionRepositoryPort {
   abstract findAll(): Promise<Inspection[]>;
 
   abstract findById(id: number): Promise<Inspection | null>;
+
+  abstract delete(id: number): Promise<void>;
+
+  abstract findEvidenceById(id: number): Promise<ItemEvidence | null>;
+
+  abstract deleteEvidence(id: number): Promise<void>;
+
+  abstract findEvidenceByFileName(
+    inspectionId: number,
+    pointNumber: number,
+    fileName: string,
+  ): Promise<ItemEvidence | null>;
 }
