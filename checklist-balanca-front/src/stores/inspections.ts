@@ -76,37 +76,37 @@ export const useInspectionsStore = defineStore('inspections', {
      * Orquestra o fluxo de criação, incluindo a verificação de duplicatas.
      */
     async createInspection(data: CreateInspectionDto): Promise<Inspection | undefined> {
-    this.isLoading = true;
-    this.error = null;
-    try {
-      // Agora recebemos o objeto de inspeção completo ou nulo
-      const existingInspection = await apiService.checkExistingInspection(data);
+      this.isLoading = true;
+      this.error = null;
+      try {
+        // Agora recebemos o objeto de inspeção completo ou nulo
+        const existingInspection = await apiService.checkExistingInspection(data);
 
-      if (existingInspection) {
-        // Formatamos a data para exibição
-        const formattedDate = new Date(existingInspection.createdAt).toLocaleString('pt-BR');
-        
-        // Criamos a mensagem de confirmação rica em detalhes
-        const proceed = confirm(
-          `Atenção: Já existe uma inspeção em andamento com dados similares (ID: ${existingInspection.id}), criada em ${formattedDate}.\n\nDeseja criar uma nova inspeção mesmo assim?`
-        );
-        
-        if (!proceed) {
-          return undefined;
+        if (existingInspection) {
+          // Formatamos a data para exibição
+          const formattedDate = new Date(existingInspection.createdAt).toLocaleString('pt-BR');
+
+          // Criamos a mensagem de confirmação rica em detalhes
+          const proceed = confirm(
+            `Atenção: Já existe uma inspeção em andamento com dados similares (ID: ${existingInspection.id}), criada em ${formattedDate}.\n\nDeseja criar uma nova inspeção mesmo assim?`
+          );
+
+          if (!proceed) {
+            return undefined;
+          }
         }
-      }
-      
-      const newInspection = await apiService.createInspection(data);
-      return newInspection;
 
-    } catch (err) {
-      this.error = (err as Error).message;
-      alert(this.error);
-      return undefined;
-    } finally {
-      this.isLoading = false;
-    }
-  },
+        const newInspection = await apiService.createInspection(data);
+        return newInspection;
+
+      } catch (err) {
+        this.error = (err as Error).message;
+        alert(this.error);
+        return undefined;
+      } finally {
+        this.isLoading = false;
+      }
+    },
 
     async updateChecklistItem(pointNumber: number, data: UpdateInspectionChecklistItemDto) {
       if (!this.currentInspection) return;
@@ -120,6 +120,40 @@ export const useInspectionsStore = defineStore('inspections', {
       } catch (err) {
         this.error = (err as Error).message;
         alert(this.error);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    async uploadEvidence(pointNumber: number, file: File) {
+      if (!this.currentInspection) {
+        this.error = 'Inspeção atual não encontrada para o upload.';
+        alert(this.error);
+        return;
+      }
+
+      // Reutilizamos o loading geral.
+      // um booleano específico como 'isUploading' poderia ser útil.
+      this.isLoading = true;
+      this.error = null;
+
+      try {
+        const newEvidence = await apiService.uploadEvidence(this.currentInspection.id, pointNumber, file);
+
+        alert('Evidência enviada com sucesso!');
+
+        // Opcional: Atualizar o estado local com a nova evidência recebida da API.
+        // Isto evita a necessidade de recarregar toda a inspeção.
+        const point = this.currentInspection.items.find(p => p.masterPointId === pointNumber);
+        if (point) {
+          if (!point.evidences) {
+            point.evidences = []; // Garante que a lista de evidências exista
+          }
+          point.evidences.push(newEvidence);
+        }
+
+      } catch (err) {
+        this.error = `Falha ao enviar evidência: ${(err as Error).message}`;
+        alert(this.error); // Informa o usuário sobre o erro.
       } finally {
         this.isLoading = false;
       }

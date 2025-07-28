@@ -506,7 +506,7 @@ services:
 </ul>
 
 <h2 id="-endpoints-da-api">📡 Endpoints da API</h2>
-<p>A seguir, a lista dos principais endpoints da API. Uma documentação interativa completa estará disponível via <strong>Swagger</strong> em <code>http://localhost:3000/api-docs</code> após a aplicação ser iniciada.</p>
+<p>A seguir, a lista dos principais endpoints da API. Uma documentação interativa completa está disponível via <strong>Swagger</strong> em <code>http://localhost:8888/api</code> após a aplicação ser iniciada.</p>
 <table border="1" style="border-collapse: collapse; width:100%;">
     <thead>
         <tr>
@@ -516,14 +516,18 @@ services:
         </tr>
     </thead>
     <tbody>
-        <tr><td><code>POST</code></td><td><code>/api/auth/login</code></td><td>Autentica um usuário e retorna um token JWT.</td></tr>
-        <tr><td><code>GET</code></td><td><code>/api/lookups/:type</code></td><td>Retorna a lista de valores para um tipo de lookup (ex: <code>/modalities</code>).</td></tr>
-        <tr><td><code>POST</code></td><td><code>/api/inspections</code></td><td>Cria um novo registro de inspeção.</td></tr>
-        <tr><td><code>GET</code></td><td><code>/api/inspections</code></td><td>Lista todas as inspeções, com suporte a filtros via query params.</td></tr>
-        <tr><td><code>GET</code></td><td><code>/api/inspections/:id</code></td><td>Retorna os detalhes completos de uma inspeção específica.</td></tr>
-        <tr><td><code>PATCH</code></td><td><code>/api/inspections/:id/points/:itemId</code></td><td>Atualiza o status e as observações de um item do checklist.</td></tr>
-        <tr><td><code>POST</code></td><td><code>/api/inspections/:id/points/:itemId/evidence</code></td><td>Faz o upload de uma imagem de evidência para um item.</td></tr>
-        <tr><td><code>PATCH</code></td><td><code>/api/inspections/:id/finalize</code></td><td>Finaliza a inspeção </td></tr>
+        <tr><td><code>GET</code></td><td><code>/lookups/:type</code></td><td>Retorna a lista de valores para um tipo de lookup (ex: <code>/modalities</code>).</td></tr>
+        <tr><td><code>POST</code></td><td><code>/inspections</code></td><td>Cria um novo registro de inspeção.</td></tr>
+        <tr><td><code>GET</code></td><td><code>/inspections</code></td><td>Lista todas as inspeções.</td></tr>
+        <tr><td><code>GET</code></td><td><code>/inspections/:id</code></td><td>Retorna os detalhes completos de uma inspeção específica.</td></tr>
+        <tr><td><code>PATCH</code></td><td><code>/inspections/:id</code></td><td><strong>(NOVO)</strong> Atualiza os dados de cabeçalho de uma inspeção (ex: nome do motorista).</td></tr>
+        <tr><td><code>DELETE</code></td><td><code>/inspections/:id</code></td><td><strong>(NOVO)</strong> Apaga uma inspeção completa (apenas se estiver "EM INSPEÇÃO").</td></tr>
+        <tr><td><code>POST</code></td><td><code>/inspections/check-existing</code></td><td>Verifica se uma inspeção similar já existe antes de criar uma nova.</td></tr>
+        <tr><td><code>PATCH</code></td><td><code>/inspections/:inspectionId/points/:pointNumber</code></td><td>Atualiza o status e as observações de um item do checklist.</td></tr>
+        <tr><td><code>POST</code></td><td><code>/inspections/:inspectionId/points/:pointNumber/evidence</code></td><td>Faz o upload de uma imagem de evidência para um item.</td></tr>
+        <tr><td><code>DELETE</code></td><td><code>/inspections/:inspectionId/points/:pointNumber/evidence</code></td><td><strong>(NOVO)</strong> Apaga uma evidência (imagem) específica de um item do checklist.</td></tr>
+        <tr><td><code>PATCH</code></td><td><code>/inspections/:id/finalize</code></td><td>Finaliza uma inspeção, mudando seu status para APROVADO ou REPROVADO.</td></tr>
+        <tr><td><code>GET</code></td><td><code>/inspections/:id/report/pdf</code></td><td>Gera e baixa o relatório de uma inspeção finalizada em formato PDF.</td></tr>
     </tbody>
 </table>
 
@@ -552,11 +556,12 @@ services:
         <li><strong>Objetivo:</strong> Preencher um checklist de inspeção de 18 pontos.</li>
         <li><strong>Passos:</strong>
             <ol>
-                <li>Seleciona uma inspeção pendente na tela inicial.</li>
-                <li>Preenche os campos do cabeçalho (Modalidade, Operação, etc.).</li>
+                <li>Seleciona uma inspeção pendente na tela inicial ou cria uma nova.</li>
+                <li>Preenche os campos do cabeçalho (Modalidade, Operação, Nome do Motorista, etc.).</li>
                 <li>Navega pela lista dos 18 pontos de inspeção.</li>
                 <li>Para cada ponto, seleciona um status (<code>CONFORME</code>, <code>NÃO CONFORME</code>, <code>N/A</code>), adiciona observações e anexa imagens como evidência.</li>
-                <li>O progresso é salvo continuamente.</li>
+                <li><strong>(Ação de Correção)</strong> Se uma imagem for enviada por engano, o inspetor pode apagá-la.</li>
+                <li>O progresso é salvo continuamente a cada alteração de status.</li>
             </ol>
         </li>
     </ul>
@@ -584,6 +589,34 @@ services:
                 <li>Usa os filtros de busca (por data, status, motorista, etc.) para encontrar inspeções específicas.</li>
                 <li>Clica em uma inspeção para ver os detalhes e baixar o PDF gerado.</li>
             </ol>
+        </li>
+    </ul>
+    
+    <hr>
+    
+    <h4><strong>Fluxo 5: Correção e Cancelamento de Inspeções (NOVOS)</strong></h4>
+    <ul>
+        <li><strong>Ator:</strong> Inspetor, Administrador</li>
+        <li><strong>Objetivo:</strong> Corrigir dados ou cancelar uma inspeção que ainda está em andamento.</li>
+        <li><strong>Cenários:</strong>
+            <ul>
+                <li><strong>A) Corrigir Dados do Cabeçalho:</strong>
+                    <ol>
+                        <li>Na lista de inspeções, seleciona a inspeção com status <code>EM ANDAMENTO</code> que precisa de correção.</li>
+                        <li>Clica numa opção "Editar Cabeçalho".</li>
+                        <li>Altera os dados necessários (ex: nome do motorista, placa do veículo).</li>
+                        <li>Salva as alterações. O sistema confirma a atualização.</li>
+                    </ol>
+                </li>
+                <li><strong>B) Cancelar/Apagar uma Inspeção:</strong>
+                    <ol>
+                        <li>Na lista de inspeções, encontra uma inspeção <code>EM ANDAMENTO</code> que foi criada por engano.</li>
+                        <li>Clica na opção "Apagar Inspeção".</li>
+                        <li>O sistema pede uma confirmação final, alertando que a ação é irreversível.</li>
+                        <li>Após confirmar, a inspeção, todos os seus dados e ficheiros associados são permanentemente removidos. O sistema retorna à lista de inspeções.</li>
+                    </ol>
+                </li>
+            </ul>
         </li>
     </ul>
 </details>
