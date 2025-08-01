@@ -1,17 +1,26 @@
 import { defineStore } from 'pinia';
-import { useRouter } from 'vue-router/auto';
 import { apiService } from '@/services/apiService';
-import type { Inspection, CreateInspectionDto, Lookup, UpdateInspectionChecklistItemDto } from '@/models';
+import type {
+  Inspection,
+  CreateInspectionDto,
+  Lookup,
+  UpdateInspectionChecklistItemDto,
+  InspectionChecklistItem,
+  ItemEvidence,
+  UpdateInspectionDto
+} from '@/models';
 
 interface InspectionsState {
   inspections: Inspection[];
   currentInspection: Inspection | null;
   isLoading: boolean;
+  isSubmitting: boolean;
   error: string | null;
   modalities: Lookup[];
   operationTypes: Lookup[];
   unitTypes: Lookup[];
   containerTypes: Lookup[];
+  sealVerificationStatuses: Lookup[];
 }
 
 export const useInspectionsStore = defineStore('inspections', {
@@ -19,11 +28,13 @@ export const useInspectionsStore = defineStore('inspections', {
     inspections: [],
     currentInspection: null,
     isLoading: false,
+    isSubmitting: false,
     error: null,
     modalities: [],
     operationTypes: [],
     unitTypes: [],
     containerTypes: [],
+    sealVerificationStatuses: [],
   }),
 
   actions: {
@@ -110,7 +121,9 @@ export const useInspectionsStore = defineStore('inspections', {
 
     async updateChecklistItem(pointNumber: number, data: UpdateInspectionChecklistItemDto) {
       if (!this.currentInspection) return;
-      this.isLoading = true;
+
+      this.isSubmitting = true; // <-- AJUSTE: Usar isSubmitting para consistência
+      this.error = null;
       try {
         const updatedItem = await apiService.updateChecklistItem(this.currentInspection.id, pointNumber, data);
         const itemIndex = this.currentInspection.items.findIndex(i => i.masterPointId === pointNumber);
@@ -121,42 +134,156 @@ export const useInspectionsStore = defineStore('inspections', {
         this.error = (err as Error).message;
         alert(this.error);
       } finally {
-        this.isLoading = false;
+        this.isSubmitting = false; // <-- AJUSTE: Usar isSubmitting
       }
     },
-    async uploadEvidence(pointNumber: number, file: File) {
+
+    async uploadEvidence(masterPointId: number, file: File) {
       if (!this.currentInspection) {
-        this.error = 'Inspeção atual não encontrada para o upload.';
-        alert(this.error);
-        return;
+        throw new Error('No current inspection selected');
       }
 
-      // Reutilizamos o loading geral.
-      // um booleano específico como 'isUploading' poderia ser útil.
-      this.isLoading = true;
+      console.log('Starting evidence upload for point:', masterPointId);
+
+      this.isSubmitting = true;
       this.error = null;
 
       try {
-        const newEvidence = await apiService.uploadEvidence(this.currentInspection.id, pointNumber, file);
+        const newEvidence = await apiService.uploadEvidence(
+          this.currentInspection.id,
+          masterPointId,
+          file
+        );
 
-        alert('Evidência enviada com sucesso!');
+        // Update local state
+        const itemIndex = this.currentInspection.items.findIndex(
+          p => p.masterPointId === masterPointId
+        );
 
-        // Opcional: Atualizar o estado local com a nova evidência recebida da API.
-        // Isto evita a necessidade de recarregar toda a inspeção.
-        const point = this.currentInspection.items.find(p => p.masterPointId === pointNumber);
-        if (point) {
-          if (!point.evidences) {
-            point.evidences = []; // Garante que a lista de evidências exista
-          }
-          point.evidences.push(newEvidence);
+        if (itemIndex > -1) {
+          const updatedItem = { ...this.currentInspection.items[itemIndex] };
+          updatedItem.evidences = updatedItem.evidences || [];
+          updatedItem.evidences.push(newEvidence);
+          this.currentInspection.items[itemIndex] = updatedItem;
         }
 
+        return newEvidence;
+      } catch (error) {
+        console.error('Evidence upload failed:', error);
+        this.error = `Falha ao enviar evidência: ${(error as Error).message}`;
+        throw error;
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+
+    async deleteEvidence(item: InspectionChecklistItem, evidence: ItemEvidence) {
+      if (!this.currentInspection) return;
+      this.isSubmitting = true;
+      this.error = null;
+      try {
+        await apiService.deleteEvidence(this.currentInspection.id, item.masterPointId, evidence.fileName);
+        const itemInStore = this.currentInspection.items.find(i => i.id === item.id);
+        if (itemInStore) {
+          const evidenceIndex = itemInStore.evidences.findIndex(e => e.id === evidence.id);
+          if (evidenceIndex !== -1) {
+            itemInStore.evidences.splice(evidenceIndex, 1);
+          }
+        }
       } catch (err) {
-        this.error = `Falha ao enviar evidência: ${(err as Error).message}`;
-        alert(this.error); // Informa o usuário sobre o erro.
+        this.error = (err as Error).message;
+        alert(`Erro ao apagar evidência: ${this.error}`);
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+    /**
+       * Finaliza uma inspeção, atualizando o seu status.
+       */
+    async finalizeInspection(id: number) {
+      this.isSubmitting = true;
+      this.error = null;
+      try {
+        const finalizedInspection = await apiService.finalizeInspection(id);
+        // Atualiza a inspeção atual com os dados finalizados (ex: novo status)
+        if (this.currentInspection && this.currentInspection.id === id) {
+          this.currentInspection = finalizedInspection;
+        }
+      } catch (err) {
+        this.error = (err as Error).message;
+        // Lança o erro para que o componente possa tratá-lo (ex: mostrar um alerta)
+        throw err;
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+
+    /**
+     * Baixa o relatório PDF de uma inspeção. A lógica de criar o link
+     * de download fica no componente, a store apenas busca o arquivo.
+     */
+    async downloadReportPdf(id: number): Promise<Blob | undefined> {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        return await apiService.downloadReportPdf(id);
+      } catch (err) {
+        this.error = (err as Error).message;
+        alert(`Erro ao baixar o relatório: ${this.error}`);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    /**
+     * Atualiza os dados do cabeçalho de uma inspeção (ex: nome do motorista).
+     */
+    async updateInspection(id: number, data: UpdateInspectionDto) {
+      this.isSubmitting = true;
+      this.error = null;
+      try {
+        await apiService.updateInspection(id, data);
+        // Re-busca os dados para garantir consistência
+        await this.fetchInspectionById(id);
+      } catch (err) {
+        this.error = (err as Error).message;
+        alert(`Erro ao atualizar a inspeção: ${this.error}`);
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+
+    /**
+     * Apaga uma inspeção da lista.
+     */
+    async deleteInspection(id: number) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        await apiService.deleteInspection(id);
+        // Remove a inspeção da lista local para atualizar a UI
+        this.inspections = this.inspections.filter(i => i.id !== id);
+      } catch (err) {
+        this.error = (err as Error).message;
+        alert(`Erro ao apagar a inspeção: ${this.error}`);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    
+    async fetchSealVerificationStatuses() {
+      // Para evitar recarregar dados já existentes
+      if (this.sealVerificationStatuses.length > 0) return;
+
+      this.isLoading = true;
+      try {
+        this.sealVerificationStatuses = await apiService.getLookups('seal-verification-statuses');
+      } catch (err) {
+        this.error = (err as Error).message;
       } finally {
         this.isLoading = false;
       }
     },
   },
+
 });

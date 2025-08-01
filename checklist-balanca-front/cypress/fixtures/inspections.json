@@ -1,9 +1,16 @@
 [
-  { 
-    "id": 1, 
-    "inspectorName": "Inspetor (Fixture)", 
-    "driverName": "Motorista (Fixture)", 
-    "status": { "name": "EM_INSPECAO" }, 
-    "createdAt": "2025-07-19T12:00:00Z" 
+  {
+    "id": 1,
+    "createdAt": "2025-07-29T10:00:00Z",
+    "status": { "name": "Em Andamento" },
+    "inspectorName": "Leonardo",
+    "driverName": "João Silva"
+  },
+  {
+    "id": 2,
+    "createdAt": "2025-07-28T15:30:00Z",
+    "status": { "name": "Finalizado" },
+    "inspectorName": "Maria",
+    "driverName": "José Santos"
   }
 ]
