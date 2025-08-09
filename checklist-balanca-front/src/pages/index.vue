@@ -9,40 +9,27 @@
         <v-responsive class="text-center">
           <h1 class="my-8 text-h4 font-weight-bold">Bem-vindo, Inspetor</h1>
 
-          <v-btn
-            color="yellow-darken-2"
-            size="x-large"
-            prepend-icon="mdi-plus-circle-outline"
-            class="mb-10"
-            :block="mobile"
-            @click="startNewInspection"
-          >
+          <v-btn color="yellow-darken-2" size="x-large" prepend-icon="mdi-plus-circle-outline" class="mb-10"
+            :block="mobile" @click="startNewInspection">
             Iniciar Novo Checklist 8/18
           </v-btn>
 
           <h2 class="mb-3 text-h5 font-weight-bold">Inspeções Salvas</h2>
 
           <v-card v-if="!mobile" flat rounded="lg">
-            <v-data-table
-              data-testid="inspections-data-table"
-              :headers="tableHeaders"
-              :items="inspections"
-              :loading="isLoading"
-              loading-text="Buscando inspeções..."
-              no-data-text="Nenhuma inspeção encontrada"
-            >
+            <v-data-table data-testid="inspections-data-table" :headers="tableHeaders" :items="inspections"
+              :loading="isLoading" loading-text="Buscando inspeções..." no-data-text="Nenhuma inspeção encontrada">
               <template v-slot:item.actions="{ item }">
-                <v-btn
-                  small
-                  variant="tonal"
-                  class="mr-2"
-                  :data-testid="`continue-btn-${item.id}`"
-                  @click="editInspection(item.id)"
-                >
+                <v-btn small variant="tonal" class="mr-2" :data-testid="`continue-btn-${item.id}`"
+                  @click="editInspection(item.id)">
                   Continuar
                 </v-btn>
-                <v-btn small variant="tonal" color="info" @click="viewInspection(item.id)">
-                  Visualizar
+                <v-btn small variant="tonal" color="info" class="mr-2" @click="goToReviewPage(item.id)">
+                  Revisar
+                </v-btn>
+                <v-btn v-if="item.status.name === 'EM_INSPECAO'" small variant="tonal" color="error"
+                  @click="confirmDelete(item)">
+                  Apagar
                 </v-btn>
               </template>
             </v-data-table>
@@ -52,13 +39,8 @@
             <v-progress-circular v-if="isLoading" indeterminate color="primary"></v-progress-circular>
             <div v-if="!isLoading && inspections.length === 0">Nenhuma inspeção encontrada</div>
 
-            <v-card
-              v-for="item in inspections"
-              :key="item.id"
-              class="mb-4 text-left"
-              rounded="lg"
-              elevation="2"
-            >
+            <v-card v-for="item in inspections" :key="item.id" :data-testid="`inspection-card-${item.id}`"
+              class="mb-4 text-left">
               <v-card-title>Checklist #{{ item.id }}</v-card-title>
               <v-card-subtitle>{{ formatDate(item.createdAt) }}</v-card-subtitle>
               <v-card-text>
@@ -69,16 +51,15 @@
               <v-divider></v-divider>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn variant="tonal" color="info" size="small" @click="viewInspection(item.id)">
-                  Visualizar
+                <v-btn v-if="item.status.name === 'EM_INSPECAO'" variant="tonal" color="error" size="small"
+                  @click="confirmDelete(item)">
+                  Apagar
                 </v-btn>
-                <v-btn
-                  variant="tonal"
-                  size="small"
-                  color="primary"
-                  :data-testid="`continue-btn-${item.id}`"
-                  @click="editInspection(item.id)"
-                >
+                <v-btn variant="tonal" color="info" size="small" @click="goToReviewPage(item.id)">
+                  Revisar
+                </v-btn>
+                <v-btn variant="tonal" size="small" color="primary" :data-testid="`continue-btn-${item.id}`"
+                  @click="editInspection(item.id)">
                   Continuar
                 </v-btn>
               </v-card-actions>
@@ -96,13 +77,13 @@ import { useRouter } from 'vue-router';
 import { useInspectionsStore } from '@/stores/inspections';
 import { storeToRefs } from 'pinia';
 import { useDisplay } from 'vuetify';
+import type { Inspection } from '@/models';
 
 const { mobile } = useDisplay();
 const router = useRouter();
 const inspectionsStore = useInspectionsStore();
 const { inspections, isLoading } = storeToRefs(inspectionsStore);
 
-// Headers para a tabela no desktop
 const tableHeaders = [
   { title: 'ID', key: 'id', align: 'start' },
   { title: 'Data de Início', key: 'createdAt', align: 'start' },
@@ -112,16 +93,12 @@ const tableHeaders = [
   { title: 'Ações', key: 'actions', sortable: false, align: 'center' },
 ] as const;
 
-// Função para formatar a data para a vista de smartphone
 const formatDate = (dateString: string) => {
   if (!dateString) return '';
   const date = new Date(dateString);
   return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   });
 };
 
@@ -133,8 +110,27 @@ const editInspection = (id: number) => {
   router.push(`/inspections/${id}`);
 };
 
-const viewInspection = (id: number) => {
-  alert(`Visualizar inspeção ID: ${id}`);
+// leva para a Tela 4
+const goToReviewPage = (id: number) => {
+  router.push(`/inspections/${id}/finalize`);
+};
+
+/// função para confirmar e executar a exclusão
+const confirmDelete = async (item: Inspection) => {
+  const isConfirmed = confirm(`Tem a certeza de que deseja apagar a inspeção #${item.id} do inspetor ${item.inspectorName}? Esta ação não pode ser desfeita.`);
+
+  if (isConfirmed) {
+    try {
+      // Deleta a inspeção
+      await inspectionsStore.deleteInspection(item.id);
+      
+      await inspectionsStore.fetchInspections();
+
+    } catch (error) {
+      console.error('Erro ao apagar a inspeção:', error);
+      alert(`Ocorreu um erro ao tentar apagar a inspeção.`);
+    }
+  }
 };
 
 onMounted(() => {

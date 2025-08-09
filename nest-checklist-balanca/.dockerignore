@@ -10,3 +10,6 @@ dist
 
 # Pasta do Docker/Podman
 .docker/
+
+# Ignorar a pasta de uploads local para evitar conflitos de permissão
+uploads

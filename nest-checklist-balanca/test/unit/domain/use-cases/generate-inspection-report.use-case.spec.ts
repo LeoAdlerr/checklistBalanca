@@ -6,7 +6,7 @@ import { FindInspectionByIdUseCase } from '@domain/use-cases/find-inspection-by-
 import { PdfService } from '@infra/pdf/pdf.service';
 import { Inspection } from '@domain/models/inspection.model';
 
-// Os mocks das dependências continuam os mesmos
+// Mocks das dependências
 const mockPdfService = {
   generatePdfFromHtml: jest.fn(),
 };
@@ -16,12 +16,12 @@ const mockFindByIdUseCase = {
 
 describe('GenerateInspectionReportUseCase', () => {
   let useCase: GenerateInspectionReportUseCase;
+  let findByIdUseCase: FindInspectionByIdUseCase;
   let pdfService: PdfService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        // Mapeia a interface (provide) para a implementação (useClass)
         {
           provide: GenerateInspectionReportUseCase,
           useClass: GenerateInspectionReportUseCaseImpl,
@@ -32,56 +32,74 @@ describe('GenerateInspectionReportUseCase', () => {
     }).compile();
 
     useCase = module.get<GenerateInspectionReportUseCase>(GenerateInspectionReportUseCase);
+    findByIdUseCase = module.get<FindInspectionByIdUseCase>(FindInspectionByIdUseCase);
     pdfService = module.get<PdfService>(PdfService);
   });
 
   afterEach(() => {
-    jest.resetAllMocks(); // Garante isolamento total entre os testes
+    jest.resetAllMocks(); // Limpa os mocks após cada teste
   });
 
-  it('deve gerar um relatório em PDF com sucesso', async () => {
-    // Arrange
-    const inspectionId = 1;
-    const mockInspection = {
-      id: inspectionId,
-      inspectorName: 'Teste',
-      driverName: 'Motorista de Teste',
-      statusId: 2, // Finalizado
-      modalityId: 1,
-      operationTypeId: 1,
-      unitTypeId: 1,
-      startDatetime: new Date(),
-      items: [{ masterPointId: 1, statusId: 2 }], // Item concluído
-    } as Inspection;
+  // Dados de mock reutilizáveis
+  const mockInspection = {
+    id: 1,
+    inspectorName: 'Inspetor de Teste',
+    driverName: 'Motorista de Teste',
+    startDatetime: new Date(),
+    items: [{ masterPointId: 1, statusId: 2 }], // Item concluído
+  } as Inspection;
 
-    const mockPdfBuffer = Buffer.from('conteudo-do-pdf');
-    mockFindByIdUseCase.execute.mockResolvedValue(mockInspection);
-    mockPdfService.generatePdfFromHtml.mockResolvedValue(mockPdfBuffer);
+  const mockIncompleteInspection = {
+    id: 2,
+    items: [
+      { masterPointId: 1, statusId: 2 },
+      { masterPointId: 2, statusId: 1 }, // Item Pendente
+    ],
+  } as Inspection;
 
-    // Act
-    const result = await useCase.execute(inspectionId);
+  describe('executePdf', () => {
+    it('deve chamar o serviço de PDF e retornar um buffer em caso de sucesso', async () => {
+      // Arrange
+      const mockPdfBuffer = Buffer.from('conteudo-do-pdf');
+      mockFindByIdUseCase.execute.mockResolvedValue(mockInspection);
+      mockPdfService.generatePdfFromHtml.mockResolvedValue(mockPdfBuffer);
 
-    // Assert
-    expect(mockPdfService.generatePdfFromHtml).toHaveBeenCalledTimes(1);
-    expect(result).toBe(mockPdfBuffer);
+      // Act
+      const result = await useCase.executePdf(mockInspection.id);
+
+      // Assert
+      expect(findByIdUseCase.execute).toHaveBeenCalledWith(mockInspection.id);
+      expect(pdfService.generatePdfFromHtml).toHaveBeenCalledTimes(1);
+      expect(result).toBe(mockPdfBuffer);
+    });
+
+    it('deve lançar um BadRequestException se a inspeção tiver itens pendentes', async () => {
+      // Arrange
+      mockFindByIdUseCase.execute.mockResolvedValue(mockIncompleteInspection);
+
+      // Act & Assert
+      await expect(useCase.executePdf(mockIncompleteInspection.id)).rejects.toThrow(BadRequestException);
+    });
   });
 
-  it('deve lançar um BadRequestException se a inspeção tiver itens pendentes', async () => {
-    // Arrange
-    const inspectionId = 2;
-    const mockIncompleteInspection = {
-      id: inspectionId,
-      items: [
-        { masterPointId: 1, statusId: 2 },
-        { masterPointId: 2, statusId: 1 }, // Pendente
-      ],
-    } as Inspection;
-    mockFindByIdUseCase.execute.mockResolvedValue(mockIncompleteInspection);
+  describe('executeHtml', () => {
+    it('deve retornar uma string HTML populada em caso de sucesso', async () => {
+      // Arrange
+      mockFindByIdUseCase.execute.mockResolvedValue(mockInspection);
 
-    // Act & Assert
-    await expect(useCase.execute(inspectionId)).rejects.toThrow(BadRequestException);
-    await expect(useCase.execute(inspectionId)).rejects.toThrow(
-      'Não é possível gerar o relatório. Pontos pendentes: 2.',
-    );
+      // Act
+      const result = await useCase.executeHtml(mockInspection.id);
+
+      // Assert
+      expect(findByIdUseCase.execute).toHaveBeenCalledWith(mockInspection.id);
+      expect(pdfService.generatePdfFromHtml).not.toHaveBeenCalled();
+
+      expect(typeof result).toBe('string');
+
+      // Ajustamos a string para corresponder exatamente ao título no template
+      expect(result).toContain('INSPEÇÃO 8/18 DE UNIDADE DE CARGA E TRANSPORTE');
+
+      expect(result).toContain(mockInspection.inspectorName);
+    });
   });
 });

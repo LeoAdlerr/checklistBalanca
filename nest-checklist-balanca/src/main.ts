@@ -6,6 +6,9 @@ import { ConfigService } from '@nestjs/config'
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+
 async function bootstrap() {
   const tmpDir = path.join(process.cwd(), 'uploads', 'tmp');
   try {
@@ -15,7 +18,14 @@ async function bootstrap() {
     console.error(`Erro ao criar diretório ${tmpDir}:`, err);
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Esta linha configura o NestJS para servir arquivos estáticos.
+  // Ela mapeia a pasta 'uploads' no seu sistema de arquivos para a rota '/uploads' na URL.
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+  });
+
   const configService = app.get(ConfigService);
   const corsOriginsString = configService.get<string>('cors.origins');
   const allowedOrigins = corsOriginsString
@@ -32,6 +42,7 @@ async function bootstrap() {
     origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
+    exposedHeaders: ['Content-Disposition'] 
   });
 
   console.log(`CORS habilitado para as origens:`, allowedOrigins);

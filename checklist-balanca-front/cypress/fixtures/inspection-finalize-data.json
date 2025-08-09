@@ -1,0 +1,9 @@
+{
+  "id": 123,
+  "inspectorName": "Inspetor Teste E2E",
+  "driverName": "Motorista Teste E2E",
+  "entryRegistration": "REG123",
+  "vehiclePlates": "ABC-1234",
+  "transportDocument": "DOC-5678",
+  "items": []
+}

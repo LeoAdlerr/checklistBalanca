@@ -199,4 +199,129 @@ describe('InspectionController (E2E)', () => {
       await request(app.getHttpServer()).delete(`/inspections/${inspectionId}`).expect(403);
     });
   });
+
+  describe('Geração de Relatórios (PDF e HTML)', () => {
+    let inspectionId: number;
+
+    // Antes de cada teste neste bloco, criamos uma inspeção e a finalizamos
+    // para que ela esteja em um estado válido para gerar relatórios.
+    beforeEach(async () => {
+      // 1. Cria a inspeção
+      const createResponse = await request(app.getHttpServer())
+        .post('/inspections')
+        .send(validCreateDto)
+        .expect(201);
+      inspectionId = createResponse.body.id;
+
+      // 2. Preenche todos os pontos como "CONFORME" para poder finalizar
+      const statuses = (await request(app.getHttpServer()).get('/lookups/checklist-item-statuses')).body;
+      const conformeStatusId = statuses.find(s => s.name === 'CONFORME')?.id;
+      for (let point = 1; point <= 18; point++) {
+        await request(app.getHttpServer())
+          .patch(`/inspections/${inspectionId}/points/${point}`)
+          .send({ statusId: conformeStatusId });
+      }
+
+      // 3. Finaliza a inspeção
+      await request(app.getHttpServer())
+        .patch(`/inspections/${inspectionId}/finalize`)
+        .expect(200);
+    });
+
+    it('GET /inspections/:id/report/pdf - deve retornar um arquivo PDF', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/inspections/${inspectionId}/report/pdf`)
+        .expect(200);
+
+      // Verificamos os cabeçalhos da resposta
+      expect(response.headers['content-type']).toBe('application/pdf');
+      expect(response.headers['content-disposition']).toContain(`attachment; filename="inspecao-${inspectionId}.pdf"`);
+      
+      // Verificamos se o corpo da resposta é um buffer (binário)
+      expect(response.body).toBeInstanceOf(Buffer);
+      // E se o PDF não está vazio
+      expect(response.body.length).toBeGreaterThan(0);
+    });
+
+    it('GET /inspections/:id/report/html - deve retornar o HTML do relatório', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/inspections/${inspectionId}/report/html`)
+        .expect(200);
+
+      // Verificamos o cabeçalho
+      expect(response.headers['content-type']).toContain('text/html');
+      
+      // Verificamos o conteúdo do HTML retornado
+      expect(response.text).toBeDefined();
+      expect(response.text).toContain('<!DOCTYPE html>');
+      expect(response.text).toContain('INSPEÇÃO 8/18 DE UNIDADE DE CARGA E TRANSPORTE');
+      expect(response.text).toContain(validCreateDto.inspectorName); // Verifica se os dados foram populados
+    });
+    
+    it('deve retornar 400 (Bad Request) ao tentar gerar relatório para uma inspeção não finalizada', async () => {
+        // Cria uma nova inspeção que NÃO será finalizada
+        const newInspectionResponse = await request(app.getHttpServer())
+            .post('/inspections')
+            .send({ ...validCreateDto, inspectorName: 'Pending Inspector' })
+            .expect(201);
+        const pendingInspectionId = newInspectionResponse.body.id;
+
+        // Tenta gerar o PDF e espera um erro 400
+        await request(app.getHttpServer())
+            .get(`/inspections/${pendingInspectionId}/report/pdf`)
+            .expect(400);
+
+        // Tenta gerar o HTML e espera o mesmo erro 400
+        await request(app.getHttpServer())
+            .get(`/inspections/${pendingInspectionId}/report/html`)
+            .expect(400);
+    });
+  });
+  
+  describe('Download de Evidência', () => {
+    let inspectionId: number;
+    let pointNumber: number;
+    let uploadedFileName: string;
+
+    beforeEach(async () => {
+      // 1. Cria uma inspeção para o teste
+      const createResponse = await request(app.getHttpServer())
+        .post('/inspections')
+        .send(validCreateDto)
+        .expect(201);
+      inspectionId = createResponse.body.id;
+      pointNumber = 1;
+
+      // 2. Faz o upload de um arquivo de evidência para que possamos testar o download
+      const evidenceImage = path.join(fixturesDir, 'evidence-for-download.png');
+      fs.writeFileSync(evidenceImage, 'download-test-content');
+
+      const uploadResponse = await request(app.getHttpServer())
+        .post(`/inspections/${inspectionId}/points/${pointNumber}/evidence`)
+        .attach('file', evidenceImage)
+        .expect(201);
+      
+      uploadedFileName = uploadResponse.body.fileName;
+    });
+
+    it('GET .../evidence/:fileName - deve baixar o arquivo de evidência correto', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/inspections/${inspectionId}/points/${pointNumber}/evidence/${uploadedFileName}`)
+        .expect(200);
+
+      // Verifica se os cabeçalhos estão corretos para forçar o download
+      expect(response.headers['content-type']).toBe('image/png'); // O mimetype do arquivo de upload
+      expect(response.headers['content-disposition']).toContain(`attachment; filename="${uploadedFileName}"`);
+      
+      // Verifica se o conteúdo do arquivo baixado é o mesmo que enviamos
+      expect(response.body).toBeInstanceOf(Buffer);
+      expect(response.body.toString()).toEqual('download-test-content');
+    });
+
+    it('deve retornar 404 ao tentar baixar uma evidência que não existe', async () => {
+      await request(app.getHttpServer())
+        .get(`/inspections/${inspectionId}/points/${pointNumber}/evidence/arquivo_inexistente.jpg`)
+        .expect(404);
+    });
+  });
 });

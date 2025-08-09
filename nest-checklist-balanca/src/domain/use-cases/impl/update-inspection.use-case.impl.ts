@@ -11,8 +11,8 @@ export class UpdateInspectionUseCaseImpl implements UpdateInspectionUseCase {
     private readonly inspectionRepository: InspectionRepositoryPort,
   ) {}
 
-  async execute(id: number, dto: UpdateInspectionDto): Promise<Inspection> {
-    // 1. Busca e valida a inspeção inicial.
+async execute(id: number, dto: UpdateInspectionDto): Promise<Inspection> {
+    // 1. Sua validação robusta (permanece intacta)
     const initialInspection = await this.inspectionRepository.findById(id);
     if (!initialInspection) {
       throw new NotFoundException(`Inspeção com o ID "${id}" não foi encontrada.`);
@@ -23,18 +23,25 @@ export class UpdateInspectionUseCaseImpl implements UpdateInspectionUseCase {
       );
     }
 
-    // 2. Executa a atualização se o DTO não estiver vazio.
+    // 2. Desestruturamos o DTO: separamos a data (string) do resto.
+    const { sealVerificationDate, ...restOfDto } = dto;
+
+    // 3. O 'restOfDto' agora é seguro para ser atribuído a Partial<Inspection>.
+    const updatePayload: Partial<Inspection> = { ...restOfDto };
+    
+    // 4. Se a data string existir, nós a convertemos e adicionamos ao payload.
+    if (sealVerificationDate) {
+      updatePayload.sealVerificationDate = new Date(sealVerificationDate);
+    }
+
+    // 5. Executa a atualização usando o payload corrigido
     if (Object.keys(dto).length > 0) {
-      await this.inspectionRepository.update(id, dto);
+      await this.inspectionRepository.update(id, updatePayload);
     }
     
-    // 3. Busca o estado final e atualizado da inspeção.
+    // 6. lógica final de retorno
     const updatedInspection = await this.inspectionRepository.findById(id);
-
-    // 4. A sua verificação crucial, garantindo que o tipo de retorno seja seguro.
     if (!updatedInspection) {
-      // Este é um caso de borda muito raro (a inspeção foi apagada por outro processo
-      // entre o update e esta busca), mas esta verificação torna o código à prova de falhas.
       throw new InternalServerErrorException(`A inspeção com ID "${id}" foi removida durante a atualização.`);
     }
 

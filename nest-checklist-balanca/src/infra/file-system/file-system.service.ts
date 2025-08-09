@@ -41,7 +41,7 @@ export class FileSystemService implements FileSystemPort {
       const destinationDir = path.dirname(newPath);
       await this.createDirectoryIfNotExists(destinationDir);
       await fs.rename(oldPath, newPath);
-      
+
       const newFileExists = await this.fileExists(newPath);
       const oldFileExists = await this.fileExists(oldPath);
 
@@ -56,7 +56,7 @@ export class FileSystemService implements FileSystemPort {
       throw new InternalServerErrorException(`Erro no sistema de ficheiros: ${error.message}`);
     }
   }
-  
+
   async ensureTempUploadDir(): Promise<void> {
     const tempDir = path.join(process.cwd(), 'uploads', 'tmp');
     await this.createDirectoryIfNotExists(tempDir);
@@ -90,6 +90,18 @@ export class FileSystemService implements FileSystemPort {
     } catch (error) {
       this.logger.error(`Falha ao apagar diretório ${dirPath}`, error.stack);
       throw new InternalServerErrorException(`Falha ao apagar diretório: ${error.message}`);
+    }
+  }
+
+  async readFile(filePath: string): Promise<Buffer> {
+    try {
+      const resolvedPath = path.resolve(filePath);
+      this.logger.log(`Lendo arquivo de: ${resolvedPath}`);
+      return await fs.readFile(resolvedPath);
+    } catch (error) {
+      this.logger.error(`Falha ao ler o arquivo ${filePath}`, error.stack);
+      // Lançamos um erro específico que o UseCase poderá tratar
+      throw new InternalServerErrorException(`Falha ao ler o arquivo: ${error.message}`);
     }
   }
 }

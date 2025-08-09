@@ -1,4 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { StreamableFile } from '@nestjs/common';
+import { Response } from 'express';
 import { HttpException, Logger, NotFoundException } from '@nestjs/common';
 import { InspectionController } from 'src/api/controllers/inspection.controller';
 
@@ -14,7 +16,7 @@ import { CheckForExistingInspectionUseCase } from '@domain/use-cases/check-for-e
 import { UpdateInspectionUseCase } from 'src/domain/use-cases/update-inspection.use-case';
 import { DeleteInspectionUseCase } from 'src/domain/use-cases/delete-inspection.use-case';
 import { DeleteEvidenceUseCase } from 'src/domain/use-cases/delete-evidence.use-case';
-
+import { DownloadEvidenceUseCase } from 'src/domain/use-cases/download-evidence.use-case';
 
 // Imports de DTOs e Modelos
 import { CreateInspectionDto } from 'src/api/dtos/create-inspection.dto';
@@ -25,7 +27,12 @@ import { UpdateInspectionChecklistItemDto } from 'src/api/dtos/update-inspection
 import { DeleteEvidenceDto } from 'src/api/dtos/delete-evidence.dto';
 
 // Factory para criar mocks de use cases de forma limpa
-const createMockUseCase = () => ({ execute: jest.fn() });
+const createMockUseCase = () => ({
+  execute: jest.fn(),
+  executePdf: jest.fn(),
+  executeHtml: jest.fn(),
+});
+
 
 describe('InspectionController', () => {
   let controller: InspectionController;
@@ -42,6 +49,7 @@ describe('InspectionController', () => {
   const mockUpdateInspectionUseCase = createMockUseCase();
   const mockDeleteInspectionUseCase = createMockUseCase();
   const mockDeleteEvidenceUseCase = createMockUseCase();
+  const mockDownloadEvidenceUseCase = createMockUseCase(); 
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -58,6 +66,7 @@ describe('InspectionController', () => {
         { provide: UpdateInspectionUseCase, useValue: mockUpdateInspectionUseCase },
         { provide: DeleteInspectionUseCase, useValue: mockDeleteInspectionUseCase },
         { provide: DeleteEvidenceUseCase, useValue: mockDeleteEvidenceUseCase },
+        { provide: DownloadEvidenceUseCase, useValue: mockDownloadEvidenceUseCase },
       ],
     }).compile();
 
@@ -159,17 +168,46 @@ describe('InspectionController', () => {
     });
   });
 
-  describe('generateReport', () => {
-    it('deve chamar o GenerateInspectionReportUseCase e configurar a resposta', async () => {
-      const mockPdfBuffer = Buffer.from('pdf-content');
-      const mockResponse = { setHeader: jest.fn(), send: jest.fn() };
-      mockGenerateReportUseCase.execute.mockResolvedValue(mockPdfBuffer);
+  describe('Relatórios', () => {
+    describe('generateReportPdf', () => {
+      it('deve chamar executePdf do use case e retornar um StreamableFile', async () => {
+        // Arrange
+        const inspectionId = 1;
+        const pdfBuffer = Buffer.from('pdf-content');
 
-      await controller.generateReport(1, mockResponse as any);
+        // mock para a resposta do Express ---
+        const mockResponse = {
+          setHeader: jest.fn(),
+        } as unknown as Response; // Usamos 'unknown' para simplificar a tipagem do mock
 
-      expect(mockGenerateReportUseCase.execute).toHaveBeenCalledWith(1);
-      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
-      expect(mockResponse.send).toHaveBeenCalledWith(mockPdfBuffer);
+        mockGenerateReportUseCase.executePdf.mockResolvedValue(pdfBuffer);
+
+        // Act
+        const result = await controller.generateReportPdf(inspectionId, mockResponse);
+
+        // Assert
+        expect(mockGenerateReportUseCase.executePdf).toHaveBeenCalledWith(inspectionId);
+        expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'application/pdf');
+        expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Disposition', `attachment; filename="inspecao-${inspectionId}.pdf"`);
+        expect(result).toBeInstanceOf(StreamableFile);
+        expect(result.getStream().read()).toEqual(pdfBuffer);
+      });
+    });
+
+    describe('generateReportHtml', () => {
+      it('deve chamar executeHtml do use case e retornar uma string de HTML', async () => {
+        // Arrange
+        const inspectionId = 1;
+        const htmlString = '<h1>Relatório</h1>';
+        mockGenerateReportUseCase.executeHtml.mockResolvedValue(htmlString);
+
+        // Act
+        const result = await controller.generateReportHtml(inspectionId);
+
+        // Assert
+        expect(mockGenerateReportUseCase.executeHtml).toHaveBeenCalledWith(inspectionId);
+        expect(result).toBe(htmlString);
+      });
     });
   });
 
@@ -222,7 +260,7 @@ describe('InspectionController', () => {
       const inspectionId = 1;
       const pointNumber = 5;
       const dto: DeleteEvidenceDto = { fileName: 'evidence.png' };
-      
+
       mockDeleteEvidenceUseCase.execute.mockResolvedValue({ message: 'sucesso' } as any);
 
       // Act
@@ -235,6 +273,36 @@ describe('InspectionController', () => {
         pointNumber,
         dto.fileName,
       );
+    });
+  });
+
+  describe('downloadEvidence', () => {
+    it('should call the use case and return a StreamableFile with the correct headers', async () => {
+      // Arrange
+      const inspectionId = 1;
+      const pointNumber = 5;
+      const fileName = 'test.png';
+      const mockResult = {
+        buffer: Buffer.from('fake-image-content'),
+        mimeType: 'image/png',
+        fileName: 'test.png',
+      };
+      
+      const mockResponse = {
+        setHeader: jest.fn(),
+      } as unknown as Response;
+
+      mockDownloadEvidenceUseCase.execute.mockResolvedValue(mockResult);
+
+      // Act
+      const result = await controller.downloadEvidence(inspectionId, pointNumber, fileName, mockResponse);
+
+      // Assert
+      expect(mockDownloadEvidenceUseCase.execute).toHaveBeenCalledWith(inspectionId, pointNumber, fileName);
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Type', 'image/png');
+      expect(mockResponse.setHeader).toHaveBeenCalledWith('Content-Disposition', `attachment; filename="${fileName}"`);
+      expect(result).toBeInstanceOf(StreamableFile);
+      expect(result.getStream().read()).toEqual(mockResult.buffer);
     });
   });
 });

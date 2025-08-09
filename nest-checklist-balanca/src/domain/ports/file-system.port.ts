@@ -4,5 +4,6 @@ export abstract class FileSystemPort {
   abstract moveFile(oldPath: string, newPath: string): Promise<void>;
   abstract ensureTempUploadDir(): Promise<void>;
   abstract deleteFile(filePath: string): Promise<void>;
-  abstract deleteDirectory(dirPath: string): Promise<void>; 
+  abstract deleteDirectory(dirPath: string): Promise<void>;
+  abstract readFile(filePath: string): Promise<Buffer>;
 }

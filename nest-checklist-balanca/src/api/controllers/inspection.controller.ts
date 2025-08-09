@@ -1,7 +1,7 @@
 import {
   Controller, Res, Delete, Get, Post, Body, HttpCode, HttpStatus,
   Patch, Param, ParseIntPipe, UseInterceptors, UploadedFile,
-  HttpException, NotFoundException, Logger
+  HttpException, NotFoundException, Logger, Header, StreamableFile
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
@@ -28,6 +28,7 @@ import { CheckForExistingInspectionUseCase } from 'src/domain/use-cases/check-fo
 import { UpdateInspectionUseCase } from 'src/domain/use-cases/update-inspection.use-case';
 import { DeleteInspectionUseCase } from 'src/domain/use-cases/delete-inspection.use-case';
 import { DeleteEvidenceUseCase } from 'src/domain/use-cases/delete-evidence.use-case';
+import { DownloadEvidenceUseCase } from 'src/domain/use-cases/download-evidence.use-case';
 
 // Models
 import { Inspection } from 'src/domain/models/inspection.model';
@@ -50,6 +51,7 @@ export class InspectionController {
     private readonly updateInspectionUseCase: UpdateInspectionUseCase,
     private readonly deleteInspectionUseCase: DeleteInspectionUseCase,
     private readonly deleteEvidenceUseCase: DeleteEvidenceUseCase,
+    private readonly downloadEvidenceUseCase: DownloadEvidenceUseCase,
   ) { }
 
   @Get()
@@ -156,10 +158,45 @@ export class InspectionController {
   @Get(':id/report/pdf')
   @ApiOperation({ summary: 'Gerar e baixar o relatório de uma inspeção em PDF' })
   @ApiResponse({ status: 200 })
-  async generateReport(@Param('id', ParseIntPipe) id: number, @Res() res: Response): Promise<void> {
-    const pdfBuffer = await this.generateReportUseCase.execute(id);
+  async generateReportPdf(
+    @Param('id', ParseIntPipe) id: number,
+    @Res({ passthrough: true }) res: Response
+  ): Promise<StreamableFile> {
+    const pdfBuffer = await this.generateReportUseCase.executePdf(id);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="inspecao-${id}.pdf"`);
-    res.send(pdfBuffer);
+
+    return new StreamableFile(pdfBuffer);
+  }
+
+  @Get(':id/report/html')
+  @ApiOperation({ summary: 'Obter a versão HTML do relatório para pré-visualização' })
+  @ApiResponse({ status: 200, description: 'Retorna o HTML do relatório.' })
+  @Header('Content-Type', 'text/html')
+  async generateReportHtml(@Param('id', ParseIntPipe) id: number): Promise<string> {
+    return this.generateReportUseCase.executeHtml(id);
+  }
+
+  @Get(':inspectionId/points/:pointNumber/evidence/:fileName')
+  @ApiOperation({ summary: 'Baixar um arquivo de evidência específico' })
+  @ApiResponse({ status: 200, description: 'Retorna o arquivo de evidência.' })
+  @ApiResponse({ status: 404, description: 'Evidência não encontrada.' })
+  async downloadEvidence(
+    @Param('inspectionId', ParseIntPipe) inspectionId: number,
+    @Param('pointNumber', ParseIntPipe) pointNumber: number,
+    @Param('fileName') fileName: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const { buffer, mimeType, fileName: downloadedFileName } = await this.downloadEvidenceUseCase.execute(
+      inspectionId,
+      pointNumber,
+      fileName,
+    );
+
+    res.setHeader('Content-Type', mimeType);
+    // Assegura que o navegador trate a resposta como um anexo para download
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadedFileName}"`);
+
+    return new StreamableFile(buffer);
   }
 }

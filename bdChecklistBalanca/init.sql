@@ -1,76 +1,76 @@
 -- =============================================================================
 -- NOTA TÉCNICA: Criação explícita de usuário com privilégios elevados.
---
--- Em vez de usar as variáveis de ambiente do Docker, criamos o usuário
--- e concedemos os privilégios aqui para garantir que ele tenha permissões
--- suficientes para operações futuras, como a criação de TRIGGERS.
 -- =============================================================================
-CREATE USER 'uaga_user'@'%' IDENTIFIED BY 'uaga_password';
+CREATE USER IF NOT EXISTS 'uaga_user'@'%' IDENTIFIED BY 'uaga_password';
 GRANT ALL PRIVILEGES ON `uagabd`.* TO 'uaga_user'@'%';
 FLUSH PRIVILEGES;
+
+-- Garante que o banco de dados também tenha o charset correto.
+-- O Docker geralmente cria o DB, mas podemos garantir o charset aqui.
+ALTER DATABASE `uagabd` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `uagabd`;
 
 -- =============================================================================
 -- DDL (Data Definition Language)
 -- =============================================================================
 
--- Tabelas de Lookup (com IDs estáticos e predefinidos)
-CREATE TABLE `uagabd`.`lookup_statuses` (
+CREATE TABLE `lookup_statuses` (
   `id` INT PRIMARY KEY,
   `name` VARCHAR(50) NOT NULL UNIQUE
-) COMMENT 'Status possíveis para uma inspeção geral.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `uagabd`.`lookup_modalities` (
+CREATE TABLE `lookup_modalities` (
   `id` INT PRIMARY KEY,
   `name` VARCHAR(50) NOT NULL UNIQUE
-) COMMENT 'Modalidades de transporte disponíveis.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `uagabd`.`lookup_operation_types` (
+CREATE TABLE `lookup_operation_types` (
   `id` INT PRIMARY KEY,
   `name` VARCHAR(50) NOT NULL UNIQUE
-) COMMENT 'Tipos de operação aduaneira.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `uagabd`.`lookup_unit_types` (
+CREATE TABLE `lookup_unit_types` (
   `id` INT PRIMARY KEY,
   `name` VARCHAR(50) NOT NULL UNIQUE
-) COMMENT 'Tipos de unidade de carga.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `uagabd`.`lookup_container_types` (
+CREATE TABLE `lookup_container_types` (
   `id` INT PRIMARY KEY,
   `name` VARCHAR(50) NOT NULL UNIQUE
-) COMMENT 'Tipos específicos de contêineres.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `uagabd`.`lookup_checklist_item_statuses` (
+CREATE TABLE `lookup_checklist_item_statuses` (
   `id` INT PRIMARY KEY,
   `name` VARCHAR(50) NOT NULL UNIQUE
-) COMMENT 'Status para cada item individual da inspeção.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `uagabd`.`lookup_seal_verification_statuses` (
+CREATE TABLE `lookup_seal_verification_statuses` (
   `id` INT PRIMARY KEY,
   `name` VARCHAR(50) NOT NULL UNIQUE
-) COMMENT 'Status para a verificação de lacres na saída.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- Tabela mestre com a definição dos 18 pontos de inspeção.
-CREATE TABLE `uagabd`.`master_inspection_points` (
+CREATE TABLE `master_inspection_points` (
   `id` INT PRIMARY KEY,
   `point_number` INT NOT NULL UNIQUE,
   `name` VARCHAR(255) NOT NULL,
   `description` TEXT,
-  `category` VARCHAR(50) NOT NULL COMMENT 'Valores: ''VEICULO'', ''CONTEINER'''
-) COMMENT 'Tabela mestre com os 18 pontos de inspeção padrão.';
+  `category` VARCHAR(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- Tabela central que representa uma inspeção (um checklist).
-CREATE TABLE `uagabd`.`inspections` (
+CREATE TABLE `inspections` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `inspector_name` VARCHAR(255) NOT NULL COMMENT 'Campo de texto livre para o MVP, substituindo a FK para users.',
+  `inspector_name` VARCHAR(255) NOT NULL,
   `status_id` INT NOT NULL,
   `entry_registration` VARCHAR(100) NULL,
   `vehicle_plates` VARCHAR(20) NULL,
+  `transport_document` VARCHAR(100) NULL,
   `modality_id` INT NOT NULL,
   `operation_type_id` INT NOT NULL,
   `unit_type_id` INT NOT NULL,
   `container_type_id` INT NULL,
+  `verified_length` DECIMAL(10, 2) NULL,
+  `verified_width` DECIMAL(10, 2) NULL,
+  `verified_height` DECIMAL(10, 2) NULL,
   `start_datetime` DATETIME NOT NULL,
   `end_datetime` DATETIME NULL,
   `driver_name` VARCHAR(255) NOT NULL,
@@ -87,26 +87,23 @@ CREATE TABLE `uagabd`.`inspections` (
   `seal_verification_signature_path` VARCHAR(512) NULL,
   `seal_verification_date` DATE NULL,
   `observations` TEXT NULL,
+  `action_taken` TEXT NULL,
   `generated_pdf_path` VARCHAR(512) NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  
-  FOREIGN KEY (`status_id`) REFERENCES `uagabd`.`lookup_statuses`(`id`),
-  FOREIGN KEY (`modality_id`) REFERENCES `uagabd`.`lookup_modalities`(`id`),
-  FOREIGN KEY (`operation_type_id`) REFERENCES `uagabd`.`lookup_operation_types`(`id`),
-  FOREIGN KEY (`unit_type_id`) REFERENCES `uagabd`.`lookup_unit_types`(`id`),
-  FOREIGN KEY (`container_type_id`) REFERENCES `uagabd`.`lookup_container_types`(`id`),
-  FOREIGN KEY (`seal_verification_rfb_status_id`) REFERENCES `uagabd`.`lookup_seal_verification_statuses`(`id`),
-  FOREIGN KEY (`seal_verification_shipper_status_id`) REFERENCES `uagabd`.`lookup_seal_verification_statuses`(`id`),
-  FOREIGN KEY (`seal_verification_tape_status_id`) REFERENCES `uagabd`.`lookup_seal_verification_statuses`(`id`),
-
+  FOREIGN KEY (`status_id`) REFERENCES `lookup_statuses`(`id`),
+  FOREIGN KEY (`modality_id`) REFERENCES `lookup_modalities`(`id`),
+  FOREIGN KEY (`operation_type_id`) REFERENCES `lookup_operation_types`(`id`),
+  FOREIGN KEY (`unit_type_id`) REFERENCES `lookup_unit_types`(`id`),
+  FOREIGN KEY (`container_type_id`) REFERENCES `lookup_container_types`(`id`),
+  FOREIGN KEY (`seal_verification_rfb_status_id`) REFERENCES `lookup_seal_verification_statuses`(`id`),
+  FOREIGN KEY (`seal_verification_shipper_status_id`) REFERENCES `lookup_seal_verification_statuses`(`id`),
+  FOREIGN KEY (`seal_verification_tape_status_id`) REFERENCES `lookup_seal_verification_statuses`(`id`),
   INDEX `idx_inspections_driver_name` (`driver_name`),
   INDEX `idx_inspections_vehicle_plates` (`vehicle_plates`)
-) COMMENT 'Armazena cada checklist de inspeção realizado.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- Tabela que liga uma inspeção aos seus 18 pontos.
-CREATE TABLE `uagabd`.`inspection_checklist_items` (
+CREATE TABLE `inspection_checklist_items` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `inspection_id` INT NOT NULL,
   `master_point_id` INT NOT NULL,
@@ -114,26 +111,22 @@ CREATE TABLE `uagabd`.`inspection_checklist_items` (
   `observations` TEXT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  
   UNIQUE `unique_inspection_point` (`inspection_id`, `master_point_id`),
-  FOREIGN KEY (`inspection_id`) REFERENCES `uagabd`.`inspections`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`master_point_id`) REFERENCES `uagabd`.`master_inspection_points`(`id`),
-  FOREIGN KEY (`status_id`) REFERENCES `uagabd`.`lookup_checklist_item_statuses`(`id`)
-) COMMENT 'Registros de cada um dos 18 pontos para uma inspeção.';
+  FOREIGN KEY (`inspection_id`) REFERENCES `inspections`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`master_point_id`) REFERENCES `master_inspection_points`(`id`),
+  FOREIGN KEY (`status_id`) REFERENCES `lookup_checklist_item_statuses`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-
--- Tabela para armazenar as evidências (imagens) de cada item do checklist.
-CREATE TABLE `uagabd`.`item_evidences` (
+CREATE TABLE `item_evidences` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `item_id` INT NOT NULL,
-  `file_path` VARCHAR(512) NOT NULL COMMENT 'Caminho do arquivo no sistema de storage',
+  `file_path` VARCHAR(512) NOT NULL,
   `file_name` VARCHAR(255) NOT NULL,
-  `file_size` INT NOT NULL COMMENT 'Tamanho em bytes',
+  `file_size` INT NOT NULL,
   `mime_type` VARCHAR(100) NOT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  
-  FOREIGN KEY (`item_id`) REFERENCES `uagabd`.`inspection_checklist_items`(`id`) ON DELETE CASCADE
-) COMMENT 'Evidências (imagens) associadas a um item do checklist.';
+  FOREIGN KEY (`item_id`) REFERENCES `inspection_checklist_items`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- =============================================================================

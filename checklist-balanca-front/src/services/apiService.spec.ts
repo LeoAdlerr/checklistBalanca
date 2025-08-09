@@ -6,12 +6,13 @@ import type { CreateInspectionDto, UpdateInspectionChecklistItemDto, UpdateInspe
 global.fetch = vi.fn();
 
 // Helper para criar uma resposta de fetch mockada
-const createFetchResponse = (ok: boolean, data: any, status = 200) => {
+const createFetchResponse = (ok: boolean, data: any, status = 200, isText = false) => {
   return Promise.resolve({
     ok,
     status,
     json: () => Promise.resolve(data),
-    blob: () => Promise.resolve(new Blob([JSON.stringify(data)])),
+    text: () => Promise.resolve(data), // Para o HTML
+    blob: () => Promise.resolve(new Blob([isText ? data : JSON.stringify(data)])),
   } as Response);
 };
 
@@ -21,10 +22,10 @@ describe('apiService', () => {
   beforeEach(() => {
     (fetch as vi.Mock).mockClear();
     vi.stubGlobal('import', { meta: { env: { VITE_API_BASE_URL: MOCK_API_URL } } });
+    vi.stubGlobal('window', { Cypress: undefined });
   });
 
   afterEach(() => {
-    // Bloco único para restaurar os globais
     vi.unstubAllGlobals();
   });
 
@@ -33,7 +34,12 @@ describe('apiService', () => {
       const mockData = [{ id: 1, inspectorName: 'Teste' }];
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, mockData));
       const result = await apiService.getInspections();
-      expect(fetch).toHaveBeenCalledWith(`${MOCK_API_URL}/inspections`);
+      // A asserção espera o segundo argumento { headers: {} }
+      expect(fetch).toHaveBeenCalledWith(
+        `${MOCK_API_URL}/inspections`,
+        { headers: {} }
+      );
+
       expect(result).toEqual(mockData);
     });
 
@@ -188,9 +194,67 @@ describe('apiService', () => {
         ok: true,
         blob: () => Promise.resolve(mockBlob),
       } as Response));
+
       const result = await apiService.downloadReportPdf(1);
+
       expect(fetch).toHaveBeenCalledWith(`${MOCK_API_URL}/inspections/1/report/pdf`);
       expect(result).toBeInstanceOf(Blob);
+    });
+  });
+
+  describe('getReportHtml', () => {
+    it('deve buscar o relatório HTML e retornar o conteúdo como texto', async () => {
+      // Arrange
+      const inspectionId = 123;
+      const mockHtml = '<html><body><h1>Relatório</h1></body></html>';
+
+      // Criamos um mock de Response que tem o método .text()
+      const mockResponse = {
+        ok: true,
+        text: () => Promise.resolve(mockHtml),
+      };
+      (fetch as vi.Mock).mockResolvedValue(mockResponse as Response);
+
+      // Act
+      const result = await apiService.getReportHtml(inspectionId);
+
+      // Assert
+      expect(fetch).toHaveBeenCalledWith(`${MOCK_API_URL}/inspections/${inspectionId}/report/html`);
+      expect(result).toBe(mockHtml);
+    });
+
+    it('deve lançar um erro se a resposta da API não for bem-sucedida', async () => {
+      // Arrange
+      const inspectionId = 404;
+      const errorResponse = {
+        ok: false,
+        json: () => Promise.resolve({ message: 'Relatório não encontrado' }), // Simula corpo de erro
+      };
+      (fetch as vi.Mock).mockResolvedValue(errorResponse as Response);
+
+      // Act & Assert
+      await expect(apiService.getReportHtml(inspectionId)).rejects.toThrow('Relatório não encontrado');
+    });
+  });
+  
+  describe('downloadEvidence', () => {
+    it('deve baixar um arquivo de evidência e retornar um Blob', async () => {
+      const mockBlob = new Blob(['conteudo-da-imagem']);
+      (fetch as vi.Mock).mockReturnValue(Promise.resolve({
+        ok: true,
+        blob: () => Promise.resolve(mockBlob),
+      } as Response));
+
+      const result = await apiService.downloadEvidence(1, 2, 'evidence.png');
+
+      expect(fetch).toHaveBeenCalledWith(`${MOCK_API_URL}/inspections/1/points/2/evidence/evidence.png`);
+      expect(result).toBeInstanceOf(Blob);
+    });
+
+    it('deve lançar um erro se a resposta para baixar a evidência não for bem-sucedida', async () => {
+      (fetch as vi.Mock).mockReturnValue(createFetchResponse(false, {}));
+
+      await expect(apiService.downloadEvidence(1, 2, 'fail.png')).rejects.toThrow('Falha ao baixar a evidência: fail.png');
     });
   });
 });

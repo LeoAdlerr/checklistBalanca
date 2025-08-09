@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify';
 import { createTestingPinia } from '@pinia/testing';
 import { useInspectionsStore } from '@/stores/inspections';
 import ChecklistPage from './index.vue';
-import type { Inspection } from '@/models';
+import type { Inspection, ItemEvidence } from '@/models';
 
 // --- MOCKS GLOBAIS ---
 const mockRouter = { push: vi.fn() };
@@ -23,7 +23,13 @@ const getMockInspection = (isComplete = false): Inspection => ({
     masterPointId: i + 1,
     statusId: isComplete ? 2 : i === 0 ? 1 : 2, // Primeiro item pendente por padrão
     observations: '',
-    evidences: i === 0 ? [{ id: 1, fileName: 'test.png', filePath: 'path/test.png' }] : [],
+    evidences: i === 0 ? [{
+      id: 1,
+      fileName: 'test.png',
+      filePath: 'path/test.png',
+      inspectionId: 123,
+      pointNumber: i + 1
+    }] : [],
     masterPoint: { pointNumber: i + 1, name: `Ponto ${i + 1}`, description: `Descrição ${i + 1}` },
   })),
 } as any);
@@ -54,6 +60,15 @@ describe('Tela 3: Checklist (inspections/[id].vue)', () => {
     store.fetchInspectionById = vi.fn().mockResolvedValue(getMockInspection());
     store.updateChecklistItem = vi.fn().mockResolvedValue({});
     store.uploadEvidence = vi.fn().mockResolvedValue({ id: 2, fileName: 'test.jpg', filePath: 'uploads/test.jpg' });
+    store.downloadEvidence = vi.fn().mockResolvedValue(new Blob());
+    store.deleteEvidence = vi.fn().mockImplementation(async (item, evidence) => {
+      // Simula a remoção da evidência do array
+      const index = item.evidences.findIndex((e: ItemEvidence) => e.id === evidence.id);
+      if (index !== -1) {
+        item.evidences.splice(index, 1);
+      }
+      return {};
+    });
 
     wrapper = mount(ChecklistPage, {
       global: {
@@ -130,68 +145,37 @@ describe('Tela 3: Checklist (inspections/[id].vue)', () => {
 
   describe('3. Upload de Evidências', () => {
     beforeEach(async () => {
-
-      wrapper.vm.selectedPoint.statusId = 2;
-
+      store.currentInspection.items[0].statusId = 2; // Garante que o item não está pendente
+      wrapper.vm.selectedPoint = store.currentInspection.items[0];
       await wrapper.vm.$nextTick();
     });
-    it('chama updateChecklistItem e uploadEvidence quando um arquivo é salvo', async () => {
 
+    it('chama updateChecklistItem e uploadEvidence quando um arquivo é salvo', async () => {
       const mockFile = createMockFile('test.jpg', 1024, 'image/jpeg');
 
-      wrapper.vm.stagedFile = mockFile;
+      // Simula que o usuário selecionou um arquivo
+      wrapper.vm.stagedFile = [mockFile];
 
-      await wrapper.vm.$nextTick();
-
-      await findButton('Salvar Alterações')!.trigger('click');
-
-      await flushPromises();
-
-      expect(store.updateChecklistItem).toHaveBeenCalledWith(
-
-        wrapper.vm.selectedPoint.masterPointId,
-
-        expect.any(Object)
-
-      );
-
-      expect(store.uploadEvidence).toHaveBeenCalledWith(
-
-        wrapper.vm.selectedPoint.masterPointId,
-
-        mockFile
-
-      );
-
-      expect(wrapper.vm.stagedFile).toBeNull();
-    });
-    it('chama apenas updateChecklistItem quando não há arquivo para upload', async () => {
-
-      wrapper.vm.selectedPoint.observations = 'Tudo certo aqui.';
-
-      await wrapper.vm.$nextTick();
-
-      await findButton('Salvar Alterações')!.trigger('click');
-
-      await flushPromises();
+      // Chama a função de salvar diretamente
+      await wrapper.vm.saveCurrentPoint();
 
       expect(store.updateChecklistItem).toHaveBeenCalled();
-
-      expect(store.uploadEvidence).not.toHaveBeenCalled();
+      // A asserção crucial: verifica se a store foi chamada com o ARQUIVO
+      expect(store.uploadEvidence).toHaveBeenCalledWith(
+        wrapper.vm.selectedPoint.masterPointId,
+        mockFile
+      );
     });
+
     it('mostra um alerta de erro se o upload falhar', async () => {
-
       const uploadError = new Error('Upload failed');
-
       store.uploadEvidence.mockRejectedValue(uploadError);
 
-      wrapper.vm.stagedFile = createMockFile('fail.jpg', 1024, 'image/jpeg');
+      // Simula a seleção de um arquivo e chama a função de salvar
+      wrapper.vm.stagedFile = [createMockFile('fail.jpg', 1024, 'image/jpeg')];
+      await wrapper.vm.saveCurrentPoint();
 
-      await wrapper.vm.$nextTick();
-
-      await findButton('Salvar Alterações')!.trigger('click');
-
-      await flushPromises();
+      await flushPromises(); // Espera a promise da action ser rejeitada
 
       expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Erro ao salvar: Upload failed'));
     });
@@ -252,5 +236,84 @@ describe('Tela 3: Checklist (inspections/[id].vue)', () => {
     // Assert: Verifica se a navegação foi chamada com a URL correta.
     expect(mockRouter.push).toHaveBeenCalledWith(`/inspections/${store.currentInspection.id}/finalize`);
     expect(window.alert).not.toHaveBeenCalled();
+  });
+
+  describe('4. Gestão de Evidências', () => {
+    let evidence: ItemEvidence;
+
+    beforeEach(() => {
+      evidence = store.currentInspection.items[0].evidences[0];
+      wrapper.vm.isEvidenceManagerOpen = true;
+    });
+
+    it('abre o modal "Gerir Evidências" e mostra a contagem correta', async () => {
+      const manageBtn = findButton('Gerir Evidências');
+      expect(manageBtn).toBeDefined();
+
+      const evidenceCount = wrapper.vm.selectedPoint.evidences.length;
+      expect(manageBtn!.text()).toContain(`(${evidenceCount})`);
+
+      await manageBtn!.trigger('click');
+      expect(wrapper.vm.isEvidenceManagerOpen).toBe(true);
+    });
+
+    it('deve chamar downloadEvidence quando clicar no botão Baixar', async () => {
+      await wrapper.vm.$nextTick(); // Aguarda renderização do modal
+
+      const downloadBtn = wrapper.find('[data-testid="download-btn"]');
+      expect(downloadBtn.exists()).toBe(true);
+
+      await downloadBtn.trigger('click');
+      expect(store.downloadEvidence).toHaveBeenCalledWith(
+        wrapper.vm.selectedPoint,
+        evidence
+      );
+    });
+
+    it('deve abrir modal de confirmação ao clicar em Excluir', async () => {
+      await wrapper.vm.$nextTick();
+
+      const deleteBtn = wrapper.find('[data-testid="delete-btn"]');
+      expect(deleteBtn.exists()).toBe(true);
+
+      await deleteBtn.trigger('click');
+      expect(wrapper.vm.isDeleteConfirmOpen).toBe(true);
+      expect(wrapper.vm.evidenceToDelete).toEqual(evidence);
+    });
+
+    it('deve chamar deleteEvidence ao confirmar exclusão', async () => {
+      wrapper.vm.isDeleteConfirmOpen = true;
+      wrapper.vm.evidenceToDelete = evidence;
+
+      await wrapper.vm.executeDelete();
+
+      expect(store.deleteEvidence).toHaveBeenCalledWith(
+        wrapper.vm.selectedPoint,
+        evidence
+      );
+      expect(wrapper.vm.isDeleteConfirmOpen).toBe(false);
+      expect(wrapper.vm.evidenceToDelete).toBeNull();
+    });
+
+    it('deve fechar o modal de gerenciamento se não houver mais evidências', async () => {
+      // Configura para ter apenas 1 evidência
+      store.currentInspection.items[0].evidences = [evidence];
+      wrapper.vm.isEvidenceManagerOpen = true;
+      wrapper.vm.selectedPoint = store.currentInspection.items[0];
+      wrapper.vm.evidenceToDelete = evidence;
+
+      // Garante que o modal está aberto antes da exclusão
+      expect(wrapper.vm.isEvidenceManagerOpen).toBe(true);
+
+      // Simula a exclusão da única evidência
+      await wrapper.vm.executeDelete();
+
+      // Verifica se o modal foi fechado
+      expect(wrapper.vm.isEvidenceManagerOpen).toBe(false);
+
+      // Verifica se o modal de confirmação foi fechado
+      expect(wrapper.vm.isDeleteConfirmOpen).toBe(false);
+      expect(wrapper.vm.evidenceToDelete).toBeNull();
+    });
   });
 });

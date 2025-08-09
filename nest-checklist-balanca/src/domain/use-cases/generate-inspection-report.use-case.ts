@@ -1,3 +1,4 @@
 export abstract class GenerateInspectionReportUseCase {
-  abstract execute(inspectionId: number): Promise<Buffer>;
+  abstract executePdf(inspectionId: number): Promise<Buffer>;
+  abstract executeHtml(inspectionId: number): Promise<string>;
 }

@@ -13,6 +13,7 @@ jest.mock('fs/promises', () => ({
   rename: jest.fn(),
   unlink: jest.fn(), // Mock para apagar ficheiros
   rm: jest.fn(),     // Mock para apagar diretórios
+  readFile: jest.fn(), // Mock para ler ficheiros
 }));
 
 // Mock síncrono para a verificação de existência no deleteDirectory
@@ -149,6 +150,37 @@ describe('FileSystemService', () => {
       mockedFs.rm.mockRejectedValueOnce(dirError);
 
       await expect(service.deleteDirectory(dirPath)).rejects.toThrow(InternalServerErrorException);
+    });
+  });
+
+  describe('readFile', () => {
+    it('deve ler um arquivo e retornar seu conteúdo como um Buffer', async () => {
+      // Arrange
+      const filePath = '/tmp/fake-file.txt';
+      const fileContent = 'conteúdo do arquivo';
+      const mockBuffer = Buffer.from(fileContent);
+
+      // Configura o mock do fs.readFile para retornar o buffer
+      mockedFs.readFile.mockResolvedValue(mockBuffer);
+
+      // Act
+      const result = await service.readFile(filePath);
+
+      // Assert
+      expect(mockedFs.readFile).toHaveBeenCalledWith(path.resolve(filePath));
+      expect(result).toBeInstanceOf(Buffer);
+      expect(result.toString()).toEqual(fileContent);
+    });
+
+    it('deve lançar um InternalServerErrorException se a leitura do arquivo falhar', async () => {
+      // Arrange
+      const filePath = '/tmp/non-existent-file.txt';
+      const errorMessage = 'Arquivo não encontrado';
+      mockedFs.readFile.mockRejectedValue(new Error(errorMessage));
+
+      // Act & Assert
+      await expect(service.readFile(filePath)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.readFile(filePath)).rejects.toThrow(`Falha ao ler o arquivo: ${errorMessage}`);
     });
   });
 });

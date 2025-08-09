@@ -3,6 +3,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { useInspectionsStore } from './inspections';
 import { apiService } from '@/services/apiService';
 import type { Inspection, Lookup, UpdateInspectionDto } from '@/models';
+import type { InspectionChecklistItem, ItemEvidence } from '@/models/inspection.model';
 
 // Mock do apiService completo
 vi.mock('@/services/apiService', () => ({
@@ -19,6 +20,8 @@ vi.mock('@/services/apiService', () => ({
     downloadReportPdf: vi.fn(),
     updateInspection: vi.fn(),
     deleteInspection: vi.fn(),
+    getReportHtml: vi.fn(),
+    downloadEvidence: vi.fn(),
   },
 }));
 
@@ -188,6 +191,42 @@ describe('Inspections Store', () => {
     });
   });
 
+  describe('fetchReportHtml', () => {
+    it('deve chamar apiService.getReportHtml e armazenar o resultado em currentReportHtml', async () => {
+      // Arrange
+      const store = useInspectionsStore();
+      const inspectionId = 123;
+      const mockHtml = '<h1>Relatório Teste</h1>';
+      (apiService.getReportHtml as vi.Mock).mockResolvedValue(mockHtml);
+
+      // Act
+      await store.fetchReportHtml(inspectionId);
+
+      // Assert
+      expect(apiService.getReportHtml).toHaveBeenCalledWith(inspectionId);
+      expect(store.currentReportHtml).toBe(mockHtml);
+      expect(store.error).toBeNull();
+      expect(store.isLoading).toBe(false);
+    });
+
+    it('deve armazenar uma mensagem de erro se a chamada da API falhar', async () => {
+      // Arrange
+      const store = useInspectionsStore();
+      const inspectionId = 404;
+      const errorMessage = 'Relatório não encontrado';
+      (apiService.getReportHtml as vi.Mock).mockRejectedValue(new Error(errorMessage));
+
+      // Act
+      await store.fetchReportHtml(inspectionId);
+
+      // Assert
+      expect(store.error).toBe(errorMessage);
+      expect(store.currentReportHtml).toBeNull();
+      expect(store.isLoading).toBe(false);
+      expect(window.alert).toHaveBeenCalled(); // Verifica se o alerta foi chamado
+    });
+  });
+
   describe('updateInspection', () => {
     it('deve chamar o apiService e recarregar os dados da inspeção', async () => {
       const store = useInspectionsStore();
@@ -216,7 +255,7 @@ describe('Inspections Store', () => {
       expect(store.inspections[0].id).toBe(2);
     });
   });
-  
+
   describe('fetchSealVerificationStatuses', () => {
     it('deve buscar e armazenar os status de verificação de lacre', async () => {
       const store = useInspectionsStore();
@@ -237,6 +276,49 @@ describe('Inspections Store', () => {
 
       // A API não deve ser chamada
       expect(apiService.getLookups).not.toHaveBeenCalled();
+    });
+  });
+  
+  describe('downloadEvidence', () => {
+    const mockEvidence: ItemEvidence = { id: 101, fileName: 'test.png' } as any;
+    const mockItem: InspectionChecklistItem = { id: 1, masterPointId: 1, evidences: [mockEvidence] } as any;
+
+    it('deve chamar apiService.downloadEvidence com os parâmetros corretos em caso de sucesso', async () => {
+      // Arrange
+      const store = useInspectionsStore();
+      store.currentInspection = { id: 123, items: [mockItem] } as any;
+      const mockBlob = new Blob(['image-content']);
+      (apiService.downloadEvidence as vi.Mock).mockResolvedValue(mockBlob);
+
+      // Mocks para a lógica de download no navegador
+      window.URL.createObjectURL = vi.fn(() => 'blob:url');
+      window.URL.revokeObjectURL = vi.fn();
+      document.body.appendChild = vi.fn();
+      document.body.removeChild = vi.fn();
+
+      // Act
+      await store.downloadEvidence(mockItem, mockEvidence);
+
+      // Assert
+      expect(apiService.downloadEvidence).toHaveBeenCalledWith(123, 1, 'test.png');
+      expect(store.isSubmitting).toBe(false);
+      expect(store.error).toBeNull();
+    });
+
+    it('deve definir uma mensagem de erro se o download da evidência falhar', async () => {
+      // Arrange
+      const store = useInspectionsStore();
+      store.currentInspection = { id: 123, items: [mockItem] } as any;
+      const errorMessage = 'Arquivo não encontrado';
+      (apiService.downloadEvidence as vi.Mock).mockRejectedValue(new Error(errorMessage));
+
+      // Act
+      await store.downloadEvidence(mockItem, mockEvidence);
+
+      // Assert
+      expect(store.error).toBe(errorMessage);
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining(errorMessage));
+      expect(store.isSubmitting).toBe(false);
     });
   });
 });

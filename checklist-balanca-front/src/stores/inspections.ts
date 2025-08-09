@@ -21,6 +21,7 @@ interface InspectionsState {
   unitTypes: Lookup[];
   containerTypes: Lookup[];
   sealVerificationStatuses: Lookup[];
+  currentReportHtml: string | null; // Para armazenar o HTML da pré-visualização
 }
 
 export const useInspectionsStore = defineStore('inspections', {
@@ -29,6 +30,7 @@ export const useInspectionsStore = defineStore('inspections', {
     currentInspection: null,
     isLoading: false,
     isSubmitting: false,
+    currentReportHtml: null, // Valor inicial nulo
     error: null,
     modalities: [],
     operationTypes: [],
@@ -234,6 +236,24 @@ export const useInspectionsStore = defineStore('inspections', {
         this.isLoading = false;
       }
     },
+    /**
+     * Busca o relatório em formato HTML para pré-visualização.
+     */
+    async fetchReportHtml(id: number) {
+      this.isLoading = true;
+      this.error = null;
+      this.currentReportHtml = null; // Limpa o HTML anterior
+      try {
+        // Chama o método do apiService
+        this.currentReportHtml = await apiService.getReportHtml(id);
+      } catch (err) {
+        this.error = (err as Error).message;
+        // Exibe um alerta para o usuário em caso de erro
+        alert(`Erro ao carregar a pré-visualização do relatório: ${this.error}`);
+      } finally {
+        this.isLoading = false;
+      }
+    },
 
     /**
      * Atualiza os dados do cabeçalho de uma inspeção (ex: nome do motorista).
@@ -270,7 +290,7 @@ export const useInspectionsStore = defineStore('inspections', {
         this.isLoading = false;
       }
     },
-    
+
     async fetchSealVerificationStatuses() {
       // Para evitar recarregar dados já existentes
       if (this.sealVerificationStatuses.length > 0) return;
@@ -282,6 +302,38 @@ export const useInspectionsStore = defineStore('inspections', {
         this.error = (err as Error).message;
       } finally {
         this.isLoading = false;
+      }
+    },
+   
+    async downloadEvidence(item: InspectionChecklistItem, evidence: ItemEvidence) {
+      if (!this.currentInspection) return;
+
+      this.isSubmitting = true; // Use isSubmitting to show a loading state on the button
+      this.error = null;
+      try {
+        const blob = await apiService.downloadEvidence(
+          this.currentInspection.id,
+          item.masterPointId,
+          evidence.fileName
+        );
+        
+        // Create a temporary URL and link to trigger the download
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', evidence.fileName);
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up by removing the link and revoking the URL
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+
+      } catch (err) {
+        this.error = (err as Error).message;
+        alert(`Erro ao baixar a evidência: ${this.error}`);
+      } finally {
+        this.isSubmitting = false;
       }
     },
   },

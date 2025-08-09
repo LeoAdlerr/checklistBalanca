@@ -5,20 +5,21 @@ import type {
   InspectionChecklistItem,
   ItemEvidence,
   UpdateInspectionChecklistItemDto,
-  UpdateInspectionDto, // Tipo adicionado para a função 'updateInspection'
+  UpdateInspectionDto,
 } from '@/models';
 
-// Corrigido: Removido o espaço extra no final da URL
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8888';
 
-// Nenhuma outra alteração foi necessária, o seu serviço já está completo!
 export const apiService = {
   /**
    * Busca a lista de todas as inspeções.
    */
   async getInspections(): Promise<Inspection[]> {
+    const headers = window.Cypress ? { 'X-Cypress-Request': 'true' } : {};
+
     try {
-      const response = await fetch(`${BASE_URL}/inspections`);
+      const response = await fetch(`${BASE_URL}/inspections`, { headers });
+
       if (!response.ok) throw new Error('Falha ao buscar inspeções');
       return await response.json();
     } catch (error) {
@@ -26,6 +27,7 @@ export const apiService = {
       return [];
     }
   },
+
   /**
      * Busca os detalhes completos de uma única inspeção pelo ID.
      */
@@ -190,6 +192,29 @@ export const apiService = {
   async downloadReportPdf(id: number): Promise<Blob> {
     const response = await fetch(`${BASE_URL}/inspections/${id}/report/pdf`);
     if (!response.ok) throw new Error('Falha ao baixar o relatório PDF');
+    return await response.blob();
+  },
+  /**
+   * Busca a versão HTML do relatório para pré-visualização.
+   */
+  async getReportHtml(id: number): Promise<string> {
+    const response = await fetch(`${BASE_URL}/inspections/${id}/report/html`);
+    if (!response.ok) {
+      // Tenta extrair uma mensagem de erro do backend, se houver
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Falha ao buscar o relatório HTML para a inspeção ${id}`);
+    }
+    // Retorna a resposta como texto puro (HTML)
+    return await response.text();
+  },
+  /**
+   * Baixa um arquivo de evidência específico.
+   */
+  async downloadEvidence(inspectionId: number, pointNumber: number, fileName: string): Promise<Blob> {
+    const response = await fetch(`${BASE_URL}/inspections/${inspectionId}/points/${pointNumber}/evidence/${fileName}`);
+    if (!response.ok) {
+      throw new Error(`Falha ao baixar a evidência: ${fileName}`);
+    }
     return await response.blob();
   },
 };

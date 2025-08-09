@@ -34,6 +34,9 @@ import { DeleteInspectionUseCase } from '../domain/use-cases/delete-inspection.u
 import { DeleteInspectionUseCaseImpl } from '../domain/use-cases/impl/delete-inspection.use-case.impl';
 import { DeleteEvidenceUseCase } from '../domain/use-cases/delete-evidence.use-case';
 import { DeleteEvidenceUseCaseImpl } from '../domain/use-cases/impl/delete-evidence.use-case.impl';
+import { DownloadEvidenceUseCase } from '@domain/use-cases/download-evidence.use-case';
+import { DownloadEvidenceUseCaseImpl } from '@domain/use-cases/impl/download-evidence.use-case.impl';
+
 
 // Ports e Repositories
 import { InspectionRepositoryPort } from '../domain/repositories/inspection.repository.port';
@@ -75,7 +78,7 @@ import { LookupStatusEntity } from '../infra/typeorm/entities/lookup-status.enti
     FileSystemModule,
     MulterModule.registerAsync({
       // A injeção de dependência é explícita
-      imports: [FileSystemModule], 
+      imports: [FileSystemModule],
       useFactory: async (fsService: FileSystemPort) => {
         const tempDir = path.join(process.cwd(), 'uploads', 'tmp');
         await fsService.createDirectoryIfNotExists(tempDir);
@@ -109,7 +112,8 @@ import { LookupStatusEntity } from '../infra/typeorm/entities/lookup-status.enti
     { provide: UpdateInspectionUseCase, useClass: UpdateInspectionUseCaseImpl },
     { provide: DeleteInspectionUseCase, useClass: DeleteInspectionUseCaseImpl },
     { provide: DeleteEvidenceUseCase, useClass: DeleteEvidenceUseCaseImpl },
+    { provide: DownloadEvidenceUseCase, useClass: DownloadEvidenceUseCaseImpl },
     EmptyBodyValidationPipe,
   ],
 })
-export class InspectionModule {}
+export class InspectionModule { }
