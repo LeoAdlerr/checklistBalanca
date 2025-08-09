@@ -124,7 +124,7 @@ export const useInspectionsStore = defineStore('inspections', {
     async updateChecklistItem(pointNumber: number, data: UpdateInspectionChecklistItemDto) {
       if (!this.currentInspection) return;
 
-      this.isSubmitting = true; // <-- AJUSTE: Usar isSubmitting para consistência
+      this.isSubmitting = true; // Usar isSubmitting para consistência
       this.error = null;
       try {
         const updatedItem = await apiService.updateChecklistItem(this.currentInspection.id, pointNumber, data);
@@ -136,7 +136,7 @@ export const useInspectionsStore = defineStore('inspections', {
         this.error = (err as Error).message;
         alert(this.error);
       } finally {
-        this.isSubmitting = false; // <-- AJUSTE: Usar isSubmitting
+        this.isSubmitting = false; // Usar isSubmitting
       }
     },
 
@@ -144,8 +144,6 @@ export const useInspectionsStore = defineStore('inspections', {
       if (!this.currentInspection) {
         throw new Error('No current inspection selected');
       }
-
-      console.log('Starting evidence upload for point:', masterPointId);
 
       this.isSubmitting = true;
       this.error = null;

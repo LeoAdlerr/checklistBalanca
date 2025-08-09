@@ -346,10 +346,8 @@ const saveCurrentPoint = async (e?: Event) => {
     });
 
     if (fileToUpload) {
-      console.log('Starting evidence upload for point:', selectedPoint.value.masterPointId);
       await inspectionsStore.uploadEvidence(selectedPoint.value.masterPointId, fileToUpload);
       stagedFile.value = null;
-      console.log('Evidence upload finished for point:', selectedPoint.value.masterPointId);
     }
   } catch (error) {
     console.error('Error in save operation:', error);

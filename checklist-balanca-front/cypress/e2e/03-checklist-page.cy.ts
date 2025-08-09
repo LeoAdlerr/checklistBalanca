@@ -50,11 +50,11 @@ describe('Tela 3: Página do Checklist', () => {
         if (viewport === 'iphone-xr') {
           cy.get('[data-testid="nav-drawer-btn"]').click();
         }
-        
+
         cy.get('.v-navigation-drawer')
           .contains('.v-list-item', '2. PNEUS')
           .click({ force: true });
-        
+
         cy.contains('.v-card-title', '2. PNEUS').should('be.visible');
       });
 
@@ -84,6 +84,62 @@ describe('Tela 3: Página do Checklist', () => {
 
         cy.url().should('include', '/inspections/123/finalize');
         cy.contains('.v-card-title', 'Revisão Final').should('be.visible');
+      });
+    });
+
+    describe('Modal "Gerir Evidências"', () => {
+      beforeEach(() => {
+        cy.intercept(
+          { method: 'GET', url: '**/inspections/123', headers: { 'X-Cypress-Request': 'true' } },
+          { fixture: 'inspection-detail-with-evidence.json' }
+        ).as('getInspectionWithEvidence');
+
+        // Removemos o 'body' e usamos a propriedade 'fixture' diretamente.
+        cy.intercept('DELETE', '**/inspections/123/points/1/evidence', {
+          statusCode: 200,
+          fixture: 'inspection-detail-no-evidence.json'
+        }).as('deleteEvidence');
+
+        cy.intercept('GET', '**/inspections/123/points/1/evidence/test-image.png', {
+          fixture: 'test-image.png'
+        }).as('downloadEvidence');
+
+        cy.visit('/inspections/123');
+        cy.wait('@getInspectionWithEvidence');
+      });
+
+      it('deve abrir o modal, exibir, ampliar e fechar a visualização da evidência', () => {
+        cy.contains('button', 'Gerir Evidências (1)').click();
+        cy.get('.v-dialog').contains('Evidências').should('be.visible');
+        cy.get('.image-thumbnail', { timeout: 10000 }).should('be.visible')
+          .find('img').should('have.attr', 'src').and('include', 'cypress/fixtures/test-image.png');
+        cy.get('.image-container').click();
+        cy.get('.v-dialog:visible').find('img').should('have.attr', 'src').and('include', 'cypress/fixtures/test-image.png');
+        cy.get('.v-dialog:visible').contains('button', 'Fechar').click();
+        cy.get('.v-dialog').contains('Evidências').should('be.visible');
+      });
+
+      it('deve acionar o download da evidência', () => {
+        cy.contains('button', 'Gerir Evidências (1)').click();
+        cy.get('[data-testid="download-btn"]').click();
+        cy.wait('@downloadEvidence').its('response.statusCode').should('eq', 200);
+      });
+
+      // O resto do teste já estava logicamente correto e agora vai passar.
+      it('deve excluir a evidência, fechar o modal e atualizar a tela principal', () => {
+        // Passos para excluir (estavam corretos)
+        cy.contains('button', 'Gerir Evidências (1)').click();
+        cy.get('[data-testid="delete-btn"]').click();
+        cy.get('.v-dialog:visible').contains('.v-card-title', 'Confirmar Exclusão').should('be.visible');
+        cy.get('.v-dialog:visible').contains('button', 'Excluir').click();
+        cy.wait('@deleteEvidence');
+
+        // O modal "Gerir Evidências" deve ter sido fechado.
+        // Verificamos que um diálogo com o título "Evidências" não existe mais no DOM.
+        cy.contains('.v-dialog', 'Evidências').should('not.exist');
+
+        // 2: O botão "Gerir Evidências" na tela principal também deve ter desaparecido.
+        cy.contains('button', 'Gerir Evidências').should('not.exist');
       });
     });
   });
