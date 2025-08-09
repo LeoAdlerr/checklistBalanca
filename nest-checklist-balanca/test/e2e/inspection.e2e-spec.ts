@@ -31,24 +31,26 @@ describe('InspectionController (E2E)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-  
+
     app.useGlobalPipes(new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
     }));
-    
+
     await app.init();
     dataSource = moduleFixture.get<DataSource>(DataSource);
     if (!fs.existsSync(fixturesDir)) fs.mkdirSync(fixturesDir, { recursive: true });
   });
 
-  beforeEach(async () => {
+  // Este bloco será executado DEPOIS de cada teste `it`, garantindo que
+  // a sujidade do último teste também seja limpa.
+  afterEach(async () => {
     const repository = dataSource.getRepository(InspectionEntity);
     await repository.query('SET FOREIGN_KEY_CHECKS = 0;');
-    await repository.query('TRUNCATE TABLE `item_evidences`;');
-    await repository.query('TRUNCATE TABLE `inspection_checklist_items`;');
-    await repository.query('TRUNCATE TABLE `inspections`;');
+    await repository.query('TRUNCATE TABLE item_evidences;');
+    await repository.query('TRUNCATE TABLE inspection_checklist_items;');
+    await repository.query('TRUNCATE TABLE inspections;');
     await repository.query('SET FOREIGN_KEY_CHECKS = 1;');
   });
 
@@ -152,12 +154,10 @@ describe('InspectionController (E2E)', () => {
       const evidenceImage = path.join(fixturesDir, 'evidence-to-delete.png');
       fs.writeFileSync(evidenceImage, 'delete-me');
       const uploadResponse = await request(app.getHttpServer()).post(`/inspections/${inspectionId}/points/${pointNumber}/evidence`).attach('file', evidenceImage).expect(201);
-      
+
       const fileName = uploadResponse.body.fileName;
       const evidencePath = path.join(process.cwd(), uploadResponse.body.filePath);
       expect(fs.existsSync(evidencePath)).toBe(true);
-
-      //  Chama a rota e envia o 'fileName' no corpo
       await request(app.getHttpServer())
         .delete(`/inspections/${inspectionId}/points/${pointNumber}/evidence`)
         .send({ fileName })
@@ -165,7 +165,7 @@ describe('InspectionController (E2E)', () => {
         .expect((res) => {
           expect(res.body.message).toContain(`Evidência "${fileName}" apagada com sucesso.`);
         });
-      
+
       const getResponse = await request(app.getHttpServer()).get(`/inspections/${inspectionId}`);
       const item = getResponse.body.items.find(i => i.masterPointId === pointNumber);
       expect(item.evidences).toHaveLength(0);
@@ -176,8 +176,6 @@ describe('InspectionController (E2E)', () => {
       const evidenceImage = path.join(fixturesDir, 'evidence-to-delete-folder.png');
       fs.writeFileSync(evidenceImage, 'delete-folder');
       await request(app.getHttpServer()).post(`/inspections/${inspectionId}/points/1/evidence`).attach('file', evidenceImage);
-
-      // Espera 200 OK e uma mensagem no corpo
       await request(app.getHttpServer())
         .delete(`/inspections/${inspectionId}`)
         .expect(200)
@@ -236,7 +234,7 @@ describe('InspectionController (E2E)', () => {
       // Verificamos os cabeçalhos da resposta
       expect(response.headers['content-type']).toBe('application/pdf');
       expect(response.headers['content-disposition']).toContain(`attachment; filename="inspecao-${inspectionId}.pdf"`);
-      
+
       // Verificamos se o corpo da resposta é um buffer (binário)
       expect(response.body).toBeInstanceOf(Buffer);
       // E se o PDF não está vazio
@@ -250,34 +248,34 @@ describe('InspectionController (E2E)', () => {
 
       // Verificamos o cabeçalho
       expect(response.headers['content-type']).toContain('text/html');
-      
+
       // Verificamos o conteúdo do HTML retornado
       expect(response.text).toBeDefined();
       expect(response.text).toContain('<!DOCTYPE html>');
       expect(response.text).toContain('INSPEÇÃO 8/18 DE UNIDADE DE CARGA E TRANSPORTE');
       expect(response.text).toContain(validCreateDto.inspectorName); // Verifica se os dados foram populados
     });
-    
+
     it('deve retornar 400 (Bad Request) ao tentar gerar relatório para uma inspeção não finalizada', async () => {
-        // Cria uma nova inspeção que NÃO será finalizada
-        const newInspectionResponse = await request(app.getHttpServer())
-            .post('/inspections')
-            .send({ ...validCreateDto, inspectorName: 'Pending Inspector' })
-            .expect(201);
-        const pendingInspectionId = newInspectionResponse.body.id;
+      // Cria uma nova inspeção que NÃO será finalizada
+      const newInspectionResponse = await request(app.getHttpServer())
+        .post('/inspections')
+        .send({ ...validCreateDto, inspectorName: 'Pending Inspector' })
+        .expect(201);
+      const pendingInspectionId = newInspectionResponse.body.id;
 
-        // Tenta gerar o PDF e espera um erro 400
-        await request(app.getHttpServer())
-            .get(`/inspections/${pendingInspectionId}/report/pdf`)
-            .expect(400);
+      // Tenta gerar o PDF e espera um erro 400
+      await request(app.getHttpServer())
+        .get(`/inspections/${pendingInspectionId}/report/pdf`)
+        .expect(400);
 
-        // Tenta gerar o HTML e espera o mesmo erro 400
-        await request(app.getHttpServer())
-            .get(`/inspections/${pendingInspectionId}/report/html`)
-            .expect(400);
+      // Tenta gerar o HTML e espera o mesmo erro 400
+      await request(app.getHttpServer())
+        .get(`/inspections/${pendingInspectionId}/report/html`)
+        .expect(400);
     });
   });
-  
+
   describe('Download de Evidência', () => {
     let inspectionId: number;
     let pointNumber: number;
@@ -300,7 +298,7 @@ describe('InspectionController (E2E)', () => {
         .post(`/inspections/${inspectionId}/points/${pointNumber}/evidence`)
         .attach('file', evidenceImage)
         .expect(201);
-      
+
       uploadedFileName = uploadResponse.body.fileName;
     });
 
@@ -312,7 +310,7 @@ describe('InspectionController (E2E)', () => {
       // Verifica se os cabeçalhos estão corretos para forçar o download
       expect(response.headers['content-type']).toBe('image/png'); // O mimetype do arquivo de upload
       expect(response.headers['content-disposition']).toContain(`attachment; filename="${uploadedFileName}"`);
-      
+
       // Verifica se o conteúdo do arquivo baixado é o mesmo que enviamos
       expect(response.body).toBeInstanceOf(Buffer);
       expect(response.body.toString()).toEqual('download-test-content');

@@ -173,8 +173,8 @@
     <!-- Modal para confirmar mudança de status -->
     <v-dialog v-model="isStatusConfirmOpen" max-width="400">
       <v-card>
-        <v-card-title>Confirmar Mudança de Status</v-card-title>
-        <v-card-text>Tem certeza que deseja alterar o status deste ponto?</v-card-text>
+        <v-card-title>{{ modalTitle }}</v-card-title>
+        <v-card-text>{{ modalText }}</v-card-text>
         <v-card-actions>
           <v-btn text color="primary" @click="cancelStatusChange">Cancelar</v-btn>
           <v-spacer />
@@ -208,6 +208,8 @@ const isDownloading = ref(false);
 // Adicionar refs para o modal de confirmação de status
 const isStatusConfirmOpen = ref(false);
 const pendingStatusChange = ref<number | null>(null);
+const modalTitle = ref('');
+const modalText = ref('');
 
 // stagedFile aceita diferentes formatos que o v-file-input pode devolver (File | File[] | FileList | null)
 const stagedFile = ref<File | File[] | FileList | null>(null);
@@ -219,11 +221,19 @@ const activeStatus = computed(() => {
   return selectedPoint.value?.statusId;
 });
 
-// Modificada para usar o modal de confirmação
 function requestStatusChange(newStatusId: number | undefined | null) {
   if (!selectedPoint.value || newStatusId == null || newStatusId === selectedPoint.value.statusId) return;
 
-  // Armazena o novo status pendente e abre o modal
+  // LÓGICA PARA DEFINIR O TEXTO DO MODAL
+  if (newStatusId === 4) { // Se o status for "N/A"
+    modalTitle.value = 'Atenção';
+    modalText.value = 'Ao selecionar "N/A", este item ainda será considerado uma pendência e a inspeção não poderá ser finalizada.';
+  } else { // Para qualquer outro status
+    modalTitle.value = 'Confirmar Mudança de Status';
+    modalText.value = 'Tem certeza que deseja alterar o status deste ponto?';
+  }
+
+  // Armazena o novo status pendente e abre o modal (comportamento original)
   pendingStatusChange.value = newStatusId;
   isStatusConfirmOpen.value = true;
 }

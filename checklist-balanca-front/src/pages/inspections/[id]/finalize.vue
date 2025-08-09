@@ -141,11 +141,29 @@
             </v-form>
           </v-card-text>
 
+          <v-alert
+            v-if="finalStatus.text === 'EM ANÁLISE'"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mx-4 mb-4 text-center"
+            icon="mdi-alert-circle-outline"
+            text="A inspeção não pode ser finalizada pois existem itens pendentes. 'N/A' ou 'EM INSPECAO'"
+          ></v-alert>
+
           <v-divider></v-divider>
+
           <v-card-actions class="pa-4">
             <v-spacer></v-spacer>
-            <v-btn size="x-large" color="success" :loading="isSubmitting" :disabled="isLoading || isEditing"
-              @click="handleFinalize" data-testid="submit-finalize-btn">
+            
+            <v-btn
+              size="x-large"
+              color="success"
+              :loading="isSubmitting"
+              :disabled="isLoading || isEditing || finalStatus.text === 'EM ANÁLISE'"
+              @click="handleFinalize"
+              data-testid="submit-finalize-btn"
+            >
               <v-icon start>mdi-file-pdf-box</v-icon>
               Finalizar e Ir para Relatório
             </v-btn>
@@ -218,8 +236,8 @@ const finalStatus = computed(() => {
   const items = currentInspection.value.items;
 
   // Checa se algum item ainda não foi avaliado.
-  // O statusId para "EM INSPEÇÃO" é 1
-  const isEmAnalise = items.some(item => item.statusId === 1);
+  // O statusId para "EM INSPEÇÃO" é 1 e para "N/A" (que também conta como não finalizado) é 4.
+  const isEmAnalise = items.some(item => item.statusId === 1 || item.statusId === 4);
   if (isEmAnalise) {
     return { text: 'EM ANÁLISE', color: 'warning', icon: 'mdi-magnify-scan' };
   }
@@ -267,16 +285,16 @@ const handleFinalize = async () => {
   const inspectionId = Number(route.params.id);
 
   if (!inspectionId) return; // Guarda de segurança
-  
+
   if (isEditing.value) {
     alert('Por favor, salve suas alterações antes de finalizar a inspeção.');
     return;
   }
-  
+
   loadingMessage.value = 'Finalizando inspeção...';
   try {
     await inspectionsStore.finalizeInspection(inspectionId);
-    
+
     // Usamos o 'inspectionId' que guardamos
     router.push(`/inspections/${inspectionId}/report`);
 
