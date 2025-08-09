@@ -125,7 +125,6 @@ describe('Tela 3: Página do Checklist', () => {
         cy.wait('@downloadEvidence').its('response.statusCode').should('eq', 200);
       });
 
-      // O resto do teste já estava logicamente correto e agora vai passar.
       it('deve excluir a evidência, fechar o modal e atualizar a tela principal', () => {
         // Passos para excluir (estavam corretos)
         cy.contains('button', 'Gerir Evidências (1)').click();
