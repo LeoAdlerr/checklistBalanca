@@ -3,6 +3,9 @@
 **/.build/
 **/.cache/
 
+**/uploads/
+**/screenshots/
+
 # Node modules
 **/node_modules/
 
