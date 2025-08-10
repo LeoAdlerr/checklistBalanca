@@ -1,0 +1,27 @@
+{
+  "id": 123,
+  "createdAt": "2025-07-29T18:00:00.000Z",
+  "status": { "name": "Em Inspeção" },
+  "inspectorName": "Leonardo",
+  "driverName": "João da Silva",
+  "items": [
+    {
+      "id": 1,
+      "masterPointId": 1,
+      "statusId": 2,
+      "observations": "",
+      "evidences": [],
+      "masterPoint": { "pointNumber": 1, "name": "CABINE", "description": "Verificar estado da cabine" }
+    },
+    {
+      "id": 2,
+      "masterPointId": 2,
+      "statusId": 3,
+      "observations": "Pneu dianteiro esquerdo careca.",
+      "evidences": [
+        { "id": 1, "fileName": "pneu.jpg", "filePath": "path/to/pneu.jpg" }
+      ],
+      "masterPoint": { "pointNumber": 2, "name": "PNEUS", "description": "Verificar condição dos pneus" }
+    }
+  ]
+}

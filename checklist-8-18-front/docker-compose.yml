@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: frontend-app-dev
+    ports:
+      # Use a porta que você configurou no seu package.json e vite.config (ex: 3000)
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src
+      #  Sincroniza a pasta do Cypress para desenvolvimento de testes
+      - ./cypress:/app/cypress
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_BASE_URL=http://localhost:8888
