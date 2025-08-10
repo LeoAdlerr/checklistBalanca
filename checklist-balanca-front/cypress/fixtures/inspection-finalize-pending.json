@@ -1,9 +1,0 @@
-{
-  "id": 123,
-  "inspectorName": "Inspetor Pendente",
-  "driverName": "Motorista Teste",
-  "items": [
-    { "id": 1, "statusId": 2 },
-    { "id": 2, "statusId": 1 }
-  ]
-}
