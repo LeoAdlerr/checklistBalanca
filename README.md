@@ -263,46 +263,6 @@ Esta é uma visão geral. Para uma análise técnica minuciosa de cada component
     <li>📄 <strong>Para o Banco de Dados (MySQL):</strong> Consulte o <a href="./checklist-8-18-bd/README.md"><strong>README.md do Banco de Dados</strong></a>.</li>
 </ul>
 
-<hr>
-
-<h2 id="referencia-api">📡 Referência Rápida da API</h2>
-<details>
-  <summary><strong>Clique para expandir a lista de Endpoints da API</strong></summary>
-  <p>A seguir, a lista dos principais endpoints da API. Uma documentação interativa completa está disponível via <strong>Swagger</strong> em <code>/api</code> após a aplicação ser iniciada.</p>
-  
-  <table border="1" style="border-collapse: collapse; width:100%;">
-    <thead>
-      <tr>
-        <th align="left">Método</th>
-        <th align="left">Endpoint</th>
-        <th align="left">Descrição</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr bgcolor="#f8f9fa"><td colspan="3" align="center"><strong>Lookups (Dados de Suporte)</strong></td></tr>
-      <tr><td><code>GET</code></td><td><code>/lookups/:type</code></td><td>Busca uma lista de valores de suporte (ex: status, modalidades).</td></tr>
-      <tr bgcolor="#f8f9fa"><td colspan="3" align="center"><strong>Gestão de Inspeções</strong></td></tr>
-      <tr><td><code>POST</code></td><td><code>/inspections/check-existing</code></td><td>Verifica se uma inspeção similar já existe.</td></tr>
-      <tr><td><code>POST</code></td><td><code>/inspections</code></td><td>Cria um novo registro de inspeção.</td></tr>
-      <tr><td><code>GET</code></td><td><code>/inspections</code></td><td>Lista todas as inspeções.</td></tr>
-      <tr><td><code>GET</code></td><td><code>/inspections/:id</code></td><td>Retorna os detalhes completos de uma inspeção.</td></tr>
-      <tr><td><code>PATCH</code></td><td><code>/inspections/:id</code></td><td>Atualiza os dados de cabeçalho de uma inspeção.</td></tr>
-      <tr><td><code>DELETE</code></td><td><code>/inspections/:id</code></td><td>Apaga uma inspeção (se não finalizada).</td></tr>
-      <tr><td><code>PATCH</code></td><td><code>/inspections/:id/finalize</code></td><td>Finaliza uma inspeção, calculando o status final.</td></tr>
-      <tr bgcolor="#f8f9fa"><td colspan="3" align="center"><strong>Itens do Checklist e Evidências</strong></td></tr>
-      <tr><td><code>PATCH</code></td><td><code>/inspections/:inspectionId/points/:pointNumber</code></td><td>Atualiza um item do checklist.</td></tr>
-      <tr><td><code>POST</code></td><td><code>/inspections/:inspectionId/points/:pointNumber/evidence</code></td><td>Faz o upload de uma evidência.</td></tr>
-      <tr><td><code>DELETE</code></td><td><code>/inspections/:inspectionId/points/:pointNumber/evidence</code></td><td>Apaga uma evidência específica.</td></tr>
-      <tr><td><code>GET</code></td><td><code>/inspections/:inspectionId/points/:pointNumber/evidence/:fileName</code></td><td>Baixa um ficheiro de evidência específico.</td></tr>
-      <tr bgcolor="#f8f9fa"><td colspan="3" align="center"><strong>Relatórios</strong></td></tr>
-      <tr><td><code>GET</code></td><td><code>/inspections/:id/report/html</code></td><td>Obtém a versão HTML do relatório para pré-visualização.</td></tr>
-      <tr><td><code>GET</code></td><td><code>/inspections/:id/report/pdf</code></td><td>Gera e baixa o relatório PDF.</td></tr>
-    </tbody>
-  </table>
-</details>
-
-<hr>
-
 <h2 id="product-backlog">🎯 Product Backlog e Histórias de Usuário</h2>
 <p>
   O desenvolvimento do projeto é guiado por metodologias ágeis. Abaixo está o backlog de produto que define o escopo do MVP (Sprint 1) e as funcionalidades planeadas para iterações futuras (Sprint 2).

@@ -32,10 +32,9 @@ services:
       - "8888:8888"
       
     volumes:
-      # Sincroniza o código-fonte para habilitar o hot-reload
-      - ./src:/app/src
-      # Sincroniza a pasta de testes também
-      - ./test:/app/test
+      - src:/app/src
+      - test:/app/test
+      - uploads:/app/uploads
       
     shm_size: '1gb'
 

@@ -1,0 +1,37 @@
+# ====================================================================
+# Docker Compose para executar APENAS o Banco de Dados
+# Localização: /checklist-8-18-bd
+# Comando: podman-compose up --build
+# ====================================================================
+version: "3.8"
+
+services:
+  db:
+    # Constrói a imagem usando o Containerfile local
+    build: .
+    container_name: checklist-db-standalone
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: uaga_password
+      MYSQL_DATABASE: uagabd
+      MYSQL_USER: uaga_user
+      MYSQL_PASSWORD: uaga_password
+    ports:
+      # Mapeia a porta do contêiner para a sua máquina local
+      - "3306:3306"
+    volumes:
+      # Cria um volume nomeado para que os dados não se percam
+      # ao recriar o contêiner.
+      - checklist-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+# Define o volume para persistência de dados
+volumes:
+  checklist-db-data:
+    driver: local

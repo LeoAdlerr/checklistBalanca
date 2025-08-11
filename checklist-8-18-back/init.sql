@@ -1,3 +1,8 @@
+CREATE DATABASE IF NOT EXISTS `uagabd`
+  DEFAULT CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+
 -- =============================================================================
 -- NOTA TÉCNICA: Criação explícita de usuário com privilégios elevados.
 -- =============================================================================
@@ -6,12 +11,11 @@ GRANT ALL PRIVILEGES ON `uagabd`.* TO 'uaga_user'@'%';
 FLUSH PRIVILEGES;
 
 -- Garante que o banco de dados também tenha o charset correto.
--- O Docker geralmente cria o DB, mas podemos garantir o charset aqui.
 ALTER DATABASE `uagabd` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `uagabd`;
 
 -- =============================================================================
--- DDL (Data Definition Language)
+-- DDL (Data Definition Language) - SEM ALTERAÇÕES
 -- =============================================================================
 
 CREATE TABLE `lookup_statuses` (
@@ -130,7 +134,7 @@ CREATE TABLE `item_evidences` (
 
 
 -- =============================================================================
--- DML (Data Manipulation Language)
+-- DML (Data Manipulation Language) - COM DADOS ATUALIZADOS
 -- =============================================================================
 
 -- Populando as tabelas de lookup com IDs estáticos
@@ -142,23 +146,23 @@ INSERT INTO `uagabd`.`lookup_container_types` (`id`, `name`) VALUES (1, 'DRY_20'
 INSERT INTO `uagabd`.`lookup_checklist_item_statuses` (`id`, `name`) VALUES (1, 'EM_INSPECAO'), (2, 'CONFORME'), (3, 'NAO_CONFORME'), (4, 'N_A');
 INSERT INTO `uagabd`.`lookup_seal_verification_statuses` (`id`, `name`) VALUES (1, 'OK'), (2, 'NAO_OK'), (3, 'N_A');
 
--- Populando a tabela mestre com os 18 pontos de inspeção
+-- Populando a tabela mestre com os 18 pontos de inspeção (sem acentos)
 INSERT INTO `uagabd`.`master_inspection_points` (`id`, `point_number`, `name`, `description`, `category`) VALUES
-(1, 1, 'SEÇÃO INFERIOR', 'Verificar com auxílio de espelho e lanterna os espaços entre as vigas estruturais.', 'CONTEINER'),
+(1, 1, 'SECAO INFERIOR', 'Verificar com auxilio de espelho e lanterna os espacos entre as vigas estruturais.', 'CONTEINER'),
 (2, 2, 'PORTA (Interior e Exterior)', 'Verificar mecanismos de travamento & parafusos. Martelar levemente buscando som "oco".', 'CONTEINER'),
 (3, 3, 'LATERAL DIREITA', 'Verificar reparos incomuns nas vigas estruturais. Martelar levemente buscando som "oco".', 'CONTEINER'),
 (4, 4, 'LATERAL ESQUERDA', 'Verificar reparos incomuns nas vigas estruturais. Martelar levemente buscando som "oco".', 'CONTEINER'),
-(5, 5, 'PAREDE FRONTAL', 'Verificar se possui sistema de refrigeração. Martelar levemente buscando som "oco".', 'CONTEINER'),
-(6, 6, 'TETO', 'Verificar se a altura é uniforme em todo contêiner. Martelar levemente buscando som "oco".', 'CONTEINER'),
-(7, 7, 'PISO/ASSOALHO (Interior)', 'Verificar se o piso está nivelado e se há reparos ou painéis novos.', 'CONTEINER'),
-(8, 8, 'IDENTIFICAÇÃO DE PRAGAS VISÍVEIS', 'Verificar a unidade de carga em busca de pragas visíveis.', 'CONTEINER'),
+(5, 5, 'PAREDE FRONTAL', 'Verificar se possui sistema de refrigeracao. Martelar levemente buscando som "oco".', 'CONTEINER'),
+(6, 6, 'TETO', 'Verificar se a altura e uniforme em todo conteiner. Martelar levemente buscando som "oco".', 'CONTEINER'),
+(7, 7, 'PISO/ASSOALHO (Interior)', 'Verificar se o piso esta nivelado e se ha reparos ou paineis novos.', 'CONTEINER'),
+(8, 8, 'IDENTIFICACAO DE PRAGAS VISIVEIS', 'Verificar a unidade de carga em busca de pragas visiveis.', 'CONTEINER'),
 (9, 9, 'PARA-CHOQUES', 'Verificar com espelho e lanterna materiais ou compartimentos escondidos.', 'VEICULO'),
-(10, 10, 'MOTOR', 'Verificar com espelhos e lanternas a área do motor, tampas e filtros.', 'VEICULO'),
+(10, 10, 'MOTOR', 'Verificar com espelhos e lanternas a area do motor, tampas e filtros.', 'VEICULO'),
 (11, 11, 'PNEUS', 'Martelar levemente em todo pneu, incluindo steps, buscando som "oco".', 'VEICULO'),
-(12, 12, 'PISO DO CAMINHÃO', 'Levantar o carpete para confirmar se existem novos reparos ou compartimentos.', 'VEICULO'),
-(13, 13, 'TANQUE DE COMBUSTÍVEL', 'Martelar levemente para verificar se não há sólidos dentro do tanque.', 'VEICULO'),
-(14, 14, 'CABINE', 'Verificar dentro e fora de compartimentos por qualquer conteúdo ilegal.', 'VEICULO'),
-(15, 15, 'TANQUE DE AR', 'Martelar levemente em todo tanque de ar e verificar sinais de adulteração.', 'VEICULO'),
-(16, 16, 'EIXO DE TRANSMISSÃO', 'Verificar sinais de reparos ou pinturas novas e martelar levemente.', 'VEICULO'),
-(17, 17, 'ÁREA DA 5ª RODA', 'Verificar espaços livres e área da bateria por conteúdo ilegal.', 'VEICULO'),
-(18, 18, 'SISTEMA DE EXAUSTÃO', 'Verificar se não existem cordas ou itens amarrados e se o escapamento não está solto.', 'VEICULO');
+(12, 12, 'PISO DO CAMINHAO', 'Levantar o carpete para confirmar se existem novos reparos ou compartimentos.', 'VEICULO'),
+(13, 13, 'TANQUE DE COMBUSTIVEL', 'Martelar levemente para verificar se nao ha solidos dentro do tanque.', 'VEICULO'),
+(14, 14, 'CABINE', 'Verificar dentro e fora de compartimentos por qualquer conteudo ilegal.', 'VEICULO'),
+(15, 15, 'TANQUE DE AR', 'Martelar levemente em todo tanque de ar e verificar sinais de adulteracao.', 'VEICULO'),
+(16, 16, 'EIXO DE TRANSMISSAO', 'Verificar sinais de reparos ou pinturas novas e martelar levemente.', 'VEICULO'),
+(17, 17, 'AREA DA 5 RODA', 'Verificar espacos livres e area da bateria por conteudo ilegal.', 'VEICULO'),
+(18, 18, 'SISTEMA DE EXAUSTAO', 'Verificar se nao existem cordas ou itens amarrados e se o escapamento nao esta solto.', 'VEICULO');
