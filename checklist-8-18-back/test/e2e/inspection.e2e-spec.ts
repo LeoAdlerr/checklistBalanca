@@ -57,8 +57,21 @@ describe('InspectionController (E2E)', () => {
   afterAll(async () => {
     await dataSource.destroy();
     await app.close();
-    if (fs.existsSync(fixturesDir)) fs.rmSync(fixturesDir, { recursive: true, force: true });
-    if (fs.existsSync(uploadsDir)) fs.rmSync(uploadsDir, { recursive: true, force: true });
+    if (fs.existsSync(fixturesDir)) {
+      fs.rmSync(fixturesDir, { recursive: true, force: true });
+    }
+    // Em vez de apagar a pasta 'uploads', limpamos o seu conteúdo,
+    // o que evita o conflito de 'resource busy' (EBUSY) com o Docker.
+    if (fs.existsSync(uploadsDir)) {
+      const entries = fs.readdirSync(uploadsDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(uploadsDir, entry.name);
+        // Mantemos a pasta 'tmp' que o main.ts cria, se necessário.
+        if (entry.name !== 'tmp') {
+          fs.rmSync(fullPath, { recursive: true, force: true });
+        }
+      }
+    }
   });
 
   it('deve simular a jornada completa de uma inspeção e verificar a evidência no final', async () => {

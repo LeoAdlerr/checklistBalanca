@@ -30,6 +30,7 @@
   <li><a href="#executar-aplicacao">Como Executar a Aplicação</a></li>
   <li><a href="#referencia-api">Referência Rápida da API</a></li>
   <li><a href="#product-backlog">Product Backlog e Histórias de Usuário</a></li>
+  <li><a href="#guia-de-contribuicao">Guia de Contribuição</a></li>
   <li><a href="#gestao-sprint-1">Gestão do Projeto: Sprint 1</a></li>
   <li><a href="#proximos-passos">Próximos Passos: Sprint 2</a></li>
   <li><a href="#autor">Autor</a></li>
@@ -205,11 +206,11 @@ Esta é uma visão geral. Para uma análise técnica minuciosa de cada component
 </table>
 
 <hr>
-
 <h2 id="executar-aplicacao">🚀 Como Executar a Aplicação Localmente</h2>
 <p>
   Graças à containerização, todo o ambiente de desenvolvimento (Frontend, Backend e Banco de Dados) pode ser configurado e executado com apenas alguns comandos, sem a necessidade de instalar Node.js ou MySQL diretamente na sua máquina.
 </p>
+
 <h3>✅ Pré-requisitos</h3>
 <p>Antes de começar, garanta que você tem as seguintes ferramentas instaladas:</p>
 <ul>
@@ -218,35 +219,49 @@ Esta é uma visão geral. Para uma análise técnica minuciosa de cada component
   <li><em>OU</em></li>
   <li><strong>Docker + Docker Compose:</strong> A ferramenta de contêineres mais tradicional. (<a href="https://www.docker.com/products/docker-desktop/">Download Docker Desktop</a>)</li>
 </ul>
-<h3>⚙️ Instruções de Execução</h3>
+
+<h3>⚙️ Instruções de Execução (Stack Completo)</h3>
 <p>Após instalar os pré-requisitos, abra um terminal na sua pasta de preferência e siga os passos correspondentes à sua ferramenta.</p>
 <h4>Opção 1: Usando Podman (Recomendado - 1 Comando)</h4>
 <ol>
-  <li><strong>Clone o repositório:</strong> <pre><code>git clone LINKDOREPO </code></pre></li>
+  <li><strong>Clone o repositório:</strong> <pre><code>git clone https://github.com/LeoAdlerr/checklistBalanca</code></pre></li>
   <li><strong>Entre no diretório do projeto:</strong> <pre><code>cd checklistBalanca</code></pre></li>
   <li><strong>Construa e inicie a aplicação:</strong> <pre><code>podman-compose up --build --no-cache</code></pre></li>
 </ol>
 <h4>Opção 2: Usando Docker (2 Comandos)</h4>
 <ol>
-  <li><strong>Clone o repositório:</strong> <pre><code>git clone LINKDOREPO </code></pre></li>
+  <li><strong>Clone o repositório:</strong> <pre><code>git clone https://github.com/LeoAdlerr/checklistBalanca</code></pre></li>
   <li><strong>Entre no diretório do projeto:</strong> <pre><code>cd checklistBalanca</code></pre></li>
   <li><strong>Construa as imagens dos contêineres:</strong> <pre><code>docker compose build --no-cache</code></pre></li>
   <li><strong>Inicie a aplicação:</strong> <pre><code>docker compose up</code></pre></li>
 </ol>
+
 <h3>O Que Acontece Agora? (Pipeline de Qualidade Automático)</h3>
 <p>
   Ao executar o comando <code>up</code>, você verá os logs de construção dos contêineres. Uma parte crucial do nosso pipeline de qualidade é que, antes de iniciar os servidores de desenvolvimento, <strong>a suíte completa de testes unitários e E2E é executada automaticamente para o Backend e o Frontend</strong>. A aplicação só ficará disponível se todos os testes passarem com sucesso.
 </p>
+
 <h3>✅ Acesso à Aplicação</h3>
 <p>Após a conclusão dos testes e a inicialização dos servidores, a aplicação estará pronta para uso:</p>
 <ul>
   <li>🖥️ <strong>Interface Gráfica (Frontend):</strong> Acesse no seu navegador em <a href="http://localhost:3000"><strong>http://localhost:3000</strong></a></li>
   <li>📡 <strong>Documentação da API (Backend):</strong> A interface do Swagger estará disponível em <a href="http://localhost:8888/api"><strong>http://localhost:8888/api</strong></a></li>
 </ul>
+
 <h3>🛑 Parando a Aplicação</h3>
 <p>
   Para encerrar todos os serviços, volte ao terminal onde o comando está a ser executado e pressione <code>CTRL + C</code>. Para remover os contêineres e redes criadas, execute <code>podman-compose down</code> ou <code>docker compose down</code>.
 </p>
+
+<h3>🛠️ Desenvolvimento Focado (Executando Serviços Individualmente)</h3>
+<p>
+  Para desenvolvedores que precisam de focar em uma única parte da aplicação (apenas o backend, por exemplo), é possível executar cada serviço separadamente. As instruções detalhadas para build, configuração de ambiente e execução de testes de cada camada estão disponíveis nos seus respetivos manuais:
+</p>
+<ul>
+    <li>📄 <strong>Para o Backend (API NestJS):</strong> Consulte o <a href="./checklist-8-18-back/README.md"><strong>README.md do Backend</strong></a>.</li>
+    <li>📄 <strong>Para o Frontend (App Vue.js):</strong> Consulte o <a href="./checklist-8-18-front/README.md"><strong>README.md do Frontend</strong></a>.</li>
+    <li>📄 <strong>Para o Banco de Dados (MySQL):</strong> Consulte o <a href="./checklist-8-18-bd/README.md"><strong>README.md do Banco de Dados</strong></a>.</li>
+</ul>
 
 <hr>
 
@@ -317,6 +332,102 @@ Esta é uma visão geral. Para uma análise técnica minuciosa de cada component
 
 <hr>
 
+<h2 id="guia-de-contribuicao">🤝 Guia de Contribuição e Fluxo de Desenvolvimento</h2>
+<p>
+  Este projeto utiliza uma abordagem de <strong>Trunk-Based Development</strong>, onde a branch <code>main</code> é a nossa única fonte da verdade e deve estar sempre em um estado estável e passível de deploy. Para garantir a qualidade e a segurança, todo o desenvolvimento segue o fluxo rigoroso descrito abaixo.
+</p>
+
+<h3>Filosofia Principal</h3>
+<p>
+  A nossa filosofia é simples: <strong>uma tarefa sem documentação e sem testes é inútil</strong>. A qualidade não é uma etapa final, mas sim uma parte integral de cada passo do desenvolvimento.
+</p>
+
+<h3>O Processo de Contribuição Passo a Passo</h3>
+<ol>
+  <li>
+    <h4><strong>Passo 1: Criando sua Feature Branch</strong></h4>
+    <p>Todo o trabalho começa a partir da branch <code>main</code>.</p>
+    <ul>
+      <li>
+        <strong>Atualize sua <code>main</code> local:</strong>
+        <pre><code>git checkout main
+git pull origin main</code></pre>
+      </li>
+      <li>
+        <strong>Crie sua branch</strong> seguindo a convenção de nomenclatura abaixo.
+      </li>
+    </ul>
+    <blockquote>
+      <p><strong>Convenção de Nomenclatura de Branch:</strong><br>
+      <code>&lt;prefixo&gt;/&lt;repo&gt;-&lt;id-da-task&gt;-&lt;nome-da-task&gt;</code></p>
+      <ul>
+        <li><strong>Prefixos:</strong> <code>feat</code> (nova feature), <code>fix</code> (correção de bug), <code>docs</code> (documentação), <code>chore</code> (manutenção), etc.</li>
+        <li><strong>Repo:</strong> <code>geral</code>, <code>backend</code>, <code>frontend</code>, <code>database</code>.</li>
+        <li><strong>Exemplo:</strong> <code>docs/geral-33-adicao-do-guia-de-contribuicao</code></li>
+      </ul>
+    </blockquote>
+  </li>
+  
+  <li>
+    <h4><strong>Passo 2: Desenvolvendo com Qualidade</strong></h4>
+    <p>Após criar a sua branch, implemente a sua funcionalidade ou correção. Durante este passo, é <strong>obrigatório</strong> que você também crie/atualize:</p>
+    <ul>
+      <li>✅ <strong>Testes Unitários</strong> que cubram a sua nova lógica.</li>
+      <li>✅ <strong>Testes End-to-End (E2E)</strong> que validem o fluxo do usuário.</li>
+      <li>✅ <strong>Documentação</strong> relevante (seja no código, nos READMEs ou no Swagger).</li>
+    </ul>
+  </li>
+  
+  <li>
+    <h4><strong>Passo 3: Sincronização e Validação no CI Local</strong></h4>
+    <p>Antes de abrir uma Pull Request, você deve garantir que o seu código funciona perfeitamente integrado com o trabalho mais recente da equipe e em um ambiente limpo.</p>
+    <ul>
+      <li>
+        <strong>Sincronize com a <code>main</code>:</strong> Traga as últimas atualizações da <code>main</code> para a sua branch e resolva quaisquer conflitos.
+        <pre><code># Estando na sua feature-branch
+git pull origin main</code></pre>
+      </li>
+      <li>
+        <strong>Valide no Ambiente de CI:</strong> Suba os contêineres para executar o pipeline de testes completo. Isto prova que seu código funciona num ambiente externo, não apenas na sua máquina.
+        <pre><code>podman-compose up --build --no-cache</code></pre>
+      </li>
+    </ul>
+  </li>
+
+  <li>
+    <h4><strong>Passo 4: Pull Request (PR) e Code Review</strong></h4>
+    <p>Com todos os passos anteriores concluídos com sucesso, é hora de integrar o seu trabalho.</p>
+    <ul>
+      <li>Abra uma <strong>Pull Request</strong> da sua branch para a <code>main</code>.</li>
+      <li>Na descrição, explique de forma clara e concisa as alterações realizadas.</li>
+      <li>A sua PR será revisada por outros desenvolvedores da equipe. A revisão é baseada no nosso <strong>"Definition of Done" (Contrato de Qualidade)</strong>.</li>
+      <li>Se forem solicitadas alterações, realize-as e repita o Passo 3. Se aprovado, o seu código será mergeado para a <code>main</code>.</li>
+    </ul>
+  </li>
+</ol>
+
+<h3>🏁 Definition of Done (DoD) – Nosso Contrato de Qualidade</h3>
+<p>Uma Pull Request só será aprovada se atender a <strong>todos</strong> os critérios abaixo.</p>
+<h4>1. Qualidade do Código e Processo</h4>
+<ul>
+  <li>✅ <strong>Implementação:</strong> O código implementa todos os Critérios de Aceite da tarefa.</li>
+  <li>✅ <strong>Padrões:</strong> O código adere aos padrões SOLID, DDD e de estilo definidos para o projeto.</li>
+  <li>✅ <strong>Revisão de Código:</strong> A PR foi revisada e aprovada por, no mínimo, um colega.</li>
+</ul>
+<h4>2. Testes e Validação</h4>
+<ul>
+  <li>✅ <strong>Testes Unitários:</strong> A nova lógica está coberta por testes unitários significativos.</li>
+  <li>✅ <strong>Testes E2E:</strong> O fluxo do usuário relacionado à mudança está coberto por testes E2E.</li>
+  <li>✅ <strong>Suíte de Testes Passando:</strong> O pipeline de CI (<code>podman-compose up</code>) executa com 100% de sucesso.</li>
+</ul>
+<h4>3. Documentação (Não-Negociável)</h4>
+<ul>
+  <li>✅ <strong>Código Comentado:</strong> O código está claro e comentado onde a lógica é complexa.</li>
+  <li>✅ <strong>Documentação do Projeto:</strong> Os <code>READMEs</code>, diagramas ou a documentação do Swagger foram atualizados para refletir as mudanças.</li>
+</ul>
+
+<hr>
+
 <h2 id="gestao-sprint-1">📈 Gestão do Projeto: Sprint 1 (MVP)</h2>
 <p>
   O desenvolvimento do MVP ocorreu entre <strong>01 de Julho de 2025</strong> e <strong>08 de Agosto de 2025</strong>. A entrega foi concluída com sucesso, cobrindo 100% do escopo planeado para as User Stories essenciais e importantes.
@@ -345,8 +456,8 @@ Esta é uma visão geral. Para uma análise técnica minuciosa de cada component
   <li><strong>Autenticação e Níveis de Acesso (US-04):</strong> Com base no feedback, será avaliada e implementada a necessidade de um sistema de login para inspetores. Isto permitirá a criação de perfis, níveis de permissão (ex: Inspetor, Administrador) e uma camada extra de segurança e rastreabilidade.</li>
   <li><strong>Assinaturas Digitais Integradas:</strong> Para substituir completamente o papel, a Tela de Finalização será aprimorada para permitir que:
     <ul>
-      <li>O <strong>motorista</strong> possa assinar diretamente no ecrã do dispositivo.</li>
-      <li>O <strong>inspetor</strong> possa também assinar no ecrã ou, caso tenha um perfil de usuário, anexar uma assinatura padrão previamente guardada, agilizando ainda mais o processo.</li>
+      <li>O <strong>motorista</strong> possa assinar diretamente na tela do dispositivo.</li>
+      <li>O <strong>inspetor</strong> possa também assinar na tela ou, caso tenha um perfil de usuário, anexar uma assinatura padrão previamente guardada, agilizando ainda mais o processo.</li>
     </ul>
   </li>
   <li><strong>Melhorias Contínuas:</strong> Todas as sugestões de melhoria de usabilidade, performance e pequenos ajustes identificados durante a fase de homologação serão priorizados e incorporados.</li>

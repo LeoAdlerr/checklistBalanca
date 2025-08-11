@@ -1,27 +1,30 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { apiService } from './apiService';
 import type { CreateInspectionDto, UpdateInspectionChecklistItemDto, UpdateInspectionDto } from '@/models';
 
 // Mock da função fetch global
 global.fetch = vi.fn();
 
-// Helper para criar uma resposta de fetch mockada
+// Helper para criar uma resposta de fetch mockada (sem alterações aqui)
 const createFetchResponse = (ok: boolean, data: any, status = 200, isText = false) => {
   return Promise.resolve({
     ok,
     status,
     json: () => Promise.resolve(data),
-    text: () => Promise.resolve(data), // Para o HTML
+    text: () => Promise.resolve(data),
     blob: () => Promise.resolve(new Blob([isText ? data : JSON.stringify(data)])),
   } as Response);
 };
 
 describe('apiService', () => {
-  const MOCK_API_URL = 'http://localhost:8888';
+  // ✅ CORREÇÃO 1: Em vez de uma constante fixa, lemos a variável de ambiente,
+  // exatamente como a aplicação faz.
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   beforeEach(() => {
     (fetch as vi.Mock).mockClear();
-    vi.stubGlobal('import', { meta: { env: { VITE_API_BASE_URL: MOCK_API_URL } } });
+    // ✅ CORREÇÃO 2: A simulação (stub) da variável de ambiente não é mais necessária,
+    // pois estamos a usá-la diretamente, o que torna o teste mais limpo.
     vi.stubGlobal('window', { Cypress: undefined });
   });
 
@@ -34,9 +37,10 @@ describe('apiService', () => {
       const mockData = [{ id: 1, inspectorName: 'Teste' }];
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, mockData));
       const result = await apiService.getInspections();
-      // A asserção espera o segundo argumento { headers: {} }
+      
+      // ✅ CORREÇÃO 3: Usamos a nova constante dinâmica em vez da MOCK_API_URL.
       expect(fetch).toHaveBeenCalledWith(
-        `${MOCK_API_URL}/inspections`,
+        `${API_BASE_URL}/inspections`,
         { headers: {} }
       );
 
@@ -50,28 +54,27 @@ describe('apiService', () => {
     });
   });
 
+  // 👇 O resto do ficheiro segue o mesmo padrão, usando API_BASE_URL 👇
+
   describe('getInspectionById', () => {
     it('deve buscar e retornar os detalhes de uma inspeção específica', async () => {
       const mockData = { id: 1, inspectorName: 'Inspetor Detalhe' };
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, mockData));
-
       const result = await apiService.getInspectionById(1);
-
       expect(fetch).toHaveBeenCalledWith(
-        `${MOCK_API_URL}/inspections/1`,
+        `${API_BASE_URL}/inspections/1`,
         { headers: {} }
       );
-
       expect(result).toEqual(mockData);
     });
   });
-
+  
   describe('getLookups', () => {
     it('deve buscar e retornar uma lista de lookups para um tipo', async () => {
       const mockData = [{ id: 'A', description: 'Modalidade A' }];
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, mockData));
       const result = await apiService.getLookups('modalities');
-      expect(fetch).toHaveBeenCalledWith(`${MOCK_API_URL}/lookups/modalities`);
+      expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/lookups/modalities`);
       expect(result).toEqual(mockData);
     });
   });
@@ -83,7 +86,7 @@ describe('apiService', () => {
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, mockResponse));
       const result = await apiService.createInspection(dto);
       expect(fetch).toHaveBeenCalledWith(
-        `${MOCK_API_URL}/inspections`,
+        `${API_BASE_URL}/inspections`,
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify(dto),
@@ -108,7 +111,7 @@ describe('apiService', () => {
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, {}));
       await apiService.updateInspection(1, dto);
       expect(fetch).toHaveBeenCalledWith(
-        `${MOCK_API_URL}/inspections/1`,
+        `${API_BASE_URL}/inspections/1`,
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify(dto),
@@ -123,7 +126,7 @@ describe('apiService', () => {
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, mockResponse));
       const result = await apiService.deleteInspection(1);
       expect(fetch).toHaveBeenCalledWith(
-        `${MOCK_API_URL}/inspections/1`,
+        `${API_BASE_URL}/inspections/1`,
         expect.objectContaining({ method: 'DELETE' })
       );
       expect(result).toEqual(mockResponse);
@@ -136,7 +139,7 @@ describe('apiService', () => {
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, { id: 1, ...dto }));
       await apiService.updateChecklistItem(1, 5, dto);
       expect(fetch).toHaveBeenCalledWith(
-        `${MOCK_API_URL}/inspections/1/points/5`,
+        `${API_BASE_URL}/inspections/1/points/5`,
         expect.objectContaining({
           method: 'PATCH',
           body: JSON.stringify(dto),
@@ -151,7 +154,7 @@ describe('apiService', () => {
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, { id: 1, fileName: 'test.png' }));
       await apiService.uploadEvidence(1, 3, file);
       expect(fetch).toHaveBeenCalledWith(
-        `${MOCK_API_URL}/inspections/1/points/3/evidence`,
+        `${API_BASE_URL}/inspections/1/points/3/evidence`,
         expect.objectContaining({
           method: 'POST',
           body: expect.any(FormData),
@@ -165,7 +168,7 @@ describe('apiService', () => {
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, { message: 'sucesso' }));
       await apiService.deleteEvidence(1, 5, 'evidence-to-delete.png');
       expect(fetch).toHaveBeenCalledWith(
-        `${MOCK_API_URL}/inspections/1/points/5/evidence`,
+        `${API_BASE_URL}/inspections/1/points/5/evidence`,
         expect.objectContaining({
           method: 'DELETE',
           body: JSON.stringify({ fileName: 'evidence-to-delete.png' }),
@@ -180,7 +183,7 @@ describe('apiService', () => {
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(true, mockResponse));
       const result = await apiService.finalizeInspection(1);
       expect(fetch).toHaveBeenCalledWith(
-        `${MOCK_API_URL}/inspections/1/finalize`,
+        `${API_BASE_URL}/inspections/1/finalize`,
         expect.objectContaining({ method: 'PATCH' })
       );
       expect(result).toEqual(mockResponse);
@@ -194,45 +197,27 @@ describe('apiService', () => {
         ok: true,
         blob: () => Promise.resolve(mockBlob),
       } as Response));
-
       const result = await apiService.downloadReportPdf(1);
-
-      expect(fetch).toHaveBeenCalledWith(`${MOCK_API_URL}/inspections/1/report/pdf`);
+      expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/inspections/1/report/pdf`);
       expect(result).toBeInstanceOf(Blob);
     });
   });
 
   describe('getReportHtml', () => {
     it('deve buscar o relatório HTML e retornar o conteúdo como texto', async () => {
-      // Arrange
       const inspectionId = 123;
       const mockHtml = '<html><body><h1>Relatório</h1></body></html>';
-
-      // Criamos um mock de Response que tem o método .text()
-      const mockResponse = {
-        ok: true,
-        text: () => Promise.resolve(mockHtml),
-      };
+      const mockResponse = { ok: true, text: () => Promise.resolve(mockHtml) };
       (fetch as vi.Mock).mockResolvedValue(mockResponse as Response);
-
-      // Act
       const result = await apiService.getReportHtml(inspectionId);
-
-      // Assert
-      expect(fetch).toHaveBeenCalledWith(`${MOCK_API_URL}/inspections/${inspectionId}/report/html`);
+      expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/inspections/${inspectionId}/report/html`);
       expect(result).toBe(mockHtml);
     });
 
     it('deve lançar um erro se a resposta da API não for bem-sucedida', async () => {
-      // Arrange
       const inspectionId = 404;
-      const errorResponse = {
-        ok: false,
-        json: () => Promise.resolve({ message: 'Relatório não encontrado' }), // Simula corpo de erro
-      };
+      const errorResponse = { ok: false, json: () => Promise.resolve({ message: 'Relatório não encontrado' }) };
       (fetch as vi.Mock).mockResolvedValue(errorResponse as Response);
-
-      // Act & Assert
       await expect(apiService.getReportHtml(inspectionId)).rejects.toThrow('Relatório não encontrado');
     });
   });
@@ -244,16 +229,13 @@ describe('apiService', () => {
         ok: true,
         blob: () => Promise.resolve(mockBlob),
       } as Response));
-
       const result = await apiService.downloadEvidence(1, 2, 'evidence.png');
-
-      expect(fetch).toHaveBeenCalledWith(`${MOCK_API_URL}/inspections/1/points/2/evidence/evidence.png`);
+      expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/inspections/1/points/2/evidence/evidence.png`);
       expect(result).toBeInstanceOf(Blob);
     });
 
     it('deve lançar um erro se a resposta para baixar a evidência não for bem-sucedida', async () => {
       (fetch as vi.Mock).mockReturnValue(createFetchResponse(false, {}));
-
       await expect(apiService.downloadEvidence(1, 2, 'fail.png')).rejects.toThrow('Falha ao baixar a evidência: fail.png');
     });
   });

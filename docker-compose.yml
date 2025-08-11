@@ -1,0 +1,97 @@
+# ====================================================================
+# Docker Compose Unificado para a Aplicação de Inspeção Digital 8/18
+# Versão Corrigida e Simplificada
+# ====================================================================
+version: "3.8"
+
+services:
+  # --- Serviço do Banco de Dados ---
+  db:
+    image: mysql:8.0
+    container_name: checklist-db
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: uaga_password
+      MYSQL_DATABASE: uagabd
+      MYSQL_USER: uaga_user
+      MYSQL_PASSWORD: uaga_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./checklist-8-18-bd/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - checklist-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-network
+
+  # --- Serviço do Backend (NestJS) ---
+  backend:
+    build:
+      context: ./checklist-8-18-back
+      dockerfile: Containerfile
+    container_name: checklist-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8888:8888"
+    # Mapeamos as pastas essenciais para o hot-reload
+    volumes:
+      - ./checklist-8-18-back/src:/app/src
+      - ./checklist-8-18-back/test:/app/test
+      - ./checklist-8-18-back/uploads:/app/uploads
+    shm_size: '1gb'
+    environment:
+      PORT: 8888
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USERNAME: uaga_user
+      DB_PASSWORD: uaga_password
+      DB_DATABASE: uagabd
+      DB_SYNCHRONIZE: 'false'
+      JWT_SECRET: your_super_secret_key
+      CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium-browser
+      CORS_ORIGINS: http://localhost:3000
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/api"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # --- Serviço do Frontend (Vue.js) ---
+  frontend:
+    build:
+      context: ./checklist-8-18-front
+      dockerfile: Containerfile
+    container_name: checklist-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./checklist-8-18-front/src:/app/src
+      - ./checklist-8-18-front/cypress:/app/cypress
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_BASE_URL=http://backend:8888
+    networks:
+      - app-network
+
+# --- Definições de Nível Superior ---
+volumes:
+  checklist-db-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
