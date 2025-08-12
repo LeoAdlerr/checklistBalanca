@@ -1,6 +1,11 @@
 <div align="center">
-  <img src="https://www.mysql.com/common/logos/logo-mysql-170x115.png" width="150" alt="MySQL Logo">
+  <a href="https://www.mysql.com/" target="blank"><img src="https://www.mysql.com/common/logos/logo-mysql-170x115.png" width="150" alt="MySQL Logo"></a>
   <h1 align="center">Documentação do Banco de Dados - Inspeção Digital 8/18</h1>
+  <p align="center">
+    <img src="https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql&logoColor=white" alt="MySQL 8.0">
+    <img src="https://img.shields.io/badge/Schema-3ª_Forma_Normal-28A745?style=for-the-badge" alt="Schema em 3FN">
+    <img src="https://img.shields.io/badge/Status-Estável-blue?style=for-the-badge" alt="Status Estável">
+  </p>
 </div>
 
 <p>
@@ -24,7 +29,13 @@
 
 <h2 id="proposito-e-tecnologia">💡 Propósito e Tecnologia</h2>
 <p>
-  O propósito deste banco de dados é armazenar de forma segura, estruturada e relacional todos os dados gerados pelo processo de inspeção. A tecnologia escolhida foi o <strong>MySQL 8.0</strong>, devido à sua robustez, confiabilidade e amplo suporte na indústria.
+  O propósito deste banco de dados é armazenar de forma segura, estruturada e relacional todos os dados gerados pelo processo de inspeção.
+</p>
+<p>
+  A escolha da tecnologia inicial foi uma <strong>decisão pragmática e estratégica</strong>. O <strong>MySQL 8.0</strong> foi selecionado por ser uma tecnologia robusta, com vasto suporte e, crucialmente, por já fazer parte da infraestrutura existente na Universal Armazéns. Esta decisão, tomada em alinhamento com a equipe, permitiu aproveitar os recursos e o conhecimento já disponíveis, acelerando a implantação.
+</p>
+<p>
+  No entanto, o mais importante é a filosofia de design da aplicação: <strong>a tecnologia específica do banco de dados é tratada como um detalhe de implementação</strong>. Graças à robusta camada de abstração de dados no backend, construída com o ORM <strong>TypeORM</strong>, a aplicação não está fortemente acoplada ao MySQL. Isto significa que, no futuro, se for necessário ou oportuno, o sistema pode ser migrado para outro banco de dados relacional (como o SQL Server, também já existente na empresa, ou PostgreSQL) com um esforço mínimo, sem impactar a lógica de negócio da aplicação.
 </p>
 
 <h2 id="como-executar-e-interagir">🚀 Como Executar e Interagir com o Banco de Dados</h2>

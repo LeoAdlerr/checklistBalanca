@@ -1,5 +1,3 @@
-# EM DESENVOLVIMENTO
-
 <div align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="150" alt="Nest Logo" /></a>
   <h1 align="center">Documentação do Backend - Inspeção Digital 8/18</h1>
@@ -17,7 +15,9 @@
 <hr>
 
 <h2>📜 Sumário</h2>
+
 <ul>
+  <li><a href="#filosofia-e-decisoes">Filosofia e Decisões de Arquitetura</a></li>
   <li><a href="#arquitetura">Arquitetura Detalhada: Clean Architecture & DDD</a></li>
   <li><a href="#stack-tecnologico">Stack Tecnológico</a></li>
   <li><a href="#ambiente-de-desenvolvimento">Ambiente de Desenvolvimento</a></li>
@@ -26,6 +26,28 @@
   <li><a href="#referencia-api">Referência da API (Swagger)</a></li>
   <li><a href="#deploy-em-producao-iis">Deploy em Produção (IIS)</a></li>
   <li><a href="#guia-de-contribuicao">Guia de Contribuição</a></li>
+  <li><a href="#diagramas-de-classe">Diagramas de Classe e Sequência</a></li>
+</ul>
+
+<hr>
+
+<h2 id="filosofia-e-decisoes">💡 Filosofia e Decisões de Arquitetura</h2>
+<p>
+  A escolha das tecnologias e da arquitetura para o backend não foi acidental, mas sim o resultado de um processo de decisão estratégico focado na qualidade, sustentabilidade e no contexto da equipe da Universal Armazéns.
+</p>
+<ul>
+  <li>
+    <strong>O "Pivot" Estratégico: De Java/Spring para NestJS</strong><br>
+    Como PO e Desenvolvedor do projeto, com forte experiência tanto em Java/Spring quanto em NestJS, o desenvolvimento foi iniciado com Java. No entanto, uma análise estratégica revelou que a sustentabilidade do projeto a longo prazo seria maior com uma tecnologia mais alinhada ao conhecimento existente na equipe interna, que já possuía experiência com Node.js. A decisão de migrar para <strong>NestJS</strong> foi tomada para <strong>reduzir a curva de aprendizado futura</strong> e garantir que a aplicação pudesse ser facilmente mantida e evoluída pela equipe da Universal Armazéns.
+  </li>
+  <li>
+    <strong>Arquitetura Acima da Ferramenta</strong><br>
+    A prioridade sempre foi construir uma aplicação robusta e de fácil manutenção. Independentemente da linguagem, a aplicação da <strong>Clean Architecture</strong> e do <strong>DDD</strong> era um requisito fundamental. O NestJS, com o seu forte suporte a TypeScript, Orientação a Objetos e um sistema de Injeção de Dependência nativo, provou ser o veículo perfeito para implementar estes padrões de design complexos, permitindo uma separação clara entre as camadas de API, Domínio e Infraestrutura.
+  </li>
+  <li>
+    <strong>Um Ecossistema de Testes Unificado e Comprovado</strong><br>
+    A escolha do <strong>Jest</strong> como framework de testes para <strong>ambos os testes unitários e E2E</strong> foi baseada em experiências positivas em projetos anteriores. Esta decisão permitiu a criação de um fluxo de trabalho de testes rápido e eficiente, resultando numa suíte de testes completa que valida cada camada da aplicação, desde os Use Cases isolados até os fluxos de API de ponta a ponta.
+  </li>
 </ul>
 
 <hr>
@@ -356,3 +378,217 @@ Esta seção serve como um guia preliminar para a publicação da aplicação No
 <p>
 Este projeto segue um guia de contribuição unificado. Por favor, consulte o <a href="../README.md"><strong>Guia de Contribuição Principal</strong></a> na raiz do projeto antes de iniciar o desenvolvimento.
 </p>
+
+<h2 id="diagramas-de-classe">Diagramas de Classe e Sequência</h2>
+<p>
+  Os diagramas a seguir não são apenas documentação; são a representação visual da nossa filosofia de arquitetura. Eles mostram como os princípios de <strong>Clean Architecture</strong>, <strong>DDD</strong> e <strong>SOLID</strong> foram aplicados na prática para construir um sistema desacoplado, testável e robusto.
+</p>
+<p>
+  Vamos explorar a estrutura em três níveis: o <strong>Modelo de Domínio</strong> (a estrutura dos dados), o <strong>Comportamento Dinâmico</strong> (como os objetos colaboram) e a <strong>Orquestração dos Módulos</strong> (como o NestJS conecta tudo).
+</p>
+
+<hr>
+
+<h3>1. O Coração do Domínio: A Entidade <code>InspectionEntity</code></h3>
+<p>
+  Tudo começa com a nossa entidade principal, a <code>InspectionEntity</code>. Este diagrama de classe mostra a estrutura de dados central da aplicação e as suas relações diretas com as entidades de suporte (Lookups) e as entidades filhas (Checklist Items). É o mapa de dados fundamental do sistema.
+</p>
+
+```mermaid
+classDiagram
+    direction RL
+
+    class LookupEntity {
+        <<Abstract>>
+        +id: number
+        +name: string
+    }
+
+    class LookupStatusEntity { <<TypeORM Entity>> }
+    class LookupModalityEntity { <<TypeORM Entity>> }
+    class LookupOperationTypeEntity { <<TypeORM Entity>> }
+    class LookupUnitTypeEntity { <<TypeORM Entity>> }
+    class LookupContainerTypeEntity { <<TypeORM Entity>> }
+    class LookupSealVerificationStatusEntity { <<TypeORM Entity>> }
+
+    LookupStatusEntity --|> LookupEntity
+    LookupModalityEntity --|> LookupEntity
+    LookupOperationTypeEntity --|> LookupEntity
+    LookupUnitTypeEntity --|> LookupEntity
+    LookupContainerTypeEntity --|> LookupEntity
+    LookupSealVerificationStatusEntity --|> LookupEntity
+
+    class InspectionChecklistItemEntity {
+        <<TypeORM Entity>>
+        +id: number
+        +observations: string
+        +statusId: number
+        +masterPointId: number
+        + ...
+    }
+
+    class InspectionEntity {
+
+        <<TypeORM Entity>>
+        +id: number
+        +inspectorName: string
+        +statusId: number
+        +entryRegistration: string
+        +vehiclePlates: string
+        +transportDocument: string
+        +modalityId: number
+        +operationTypeId: number
+        +unitTypeId: number
+        +containerTypeId: number
+        +verifiedLength: number
+        +verifiedWidth: number
+        +verifiedHeight: number
+        +startDatetime: Date
+        +endDatetime: Date
+        +driverName: string
+        +driverSignaturePath: string
+        +inspectorSignaturePath: string
+        +sealUagaPostInspection: string
+        +sealUagaPostLoading: string
+        +sealShipper: string
+        +sealRfb: string
+        +sealVerificationRfbStatusId: number
+        +sealVerificationShipperStatusId: number
+        +sealVerificationTapeStatusId: number
+        +sealVerificationResponsibleName: string
+        +sealVerificationSignaturePath: string
+        +sealVerificationDate: Date
+        +observations: string
+        +actionTaken: string
+        +generatedPdfPath: string
+        +createdAt: Date
+        +updatedAt: Date
+    }
+
+    %% Relacionamentos (Associações)
+    InspectionEntity "1" *-- "0..*" InspectionChecklistItemEntity : "possui (items)"
+
+    InspectionEntity "*" o-- "1" LookupStatusEntity : "tem (status)"
+    InspectionEntity "*" o-- "1" LookupModalityEntity : "tem (modality)"
+    InspectionEntity "*" o-- "1" LookupOperationTypeEntity : "tem (operationType)"
+    InspectionEntity "*" o-- "1" LookupUnitTypeEntity : "tem (unitType)"
+    InspectionEntity "*" o-- "1" LookupContainerTypeEntity : "tem (containerType)"
+   
+    %% A mesma tabela de lookup pode ser referenciada múltiplas vezes
+    InspectionEntity "*" o-- "1" LookupSealVerificationStatusEntity : "tem (sealVerificationRfbStatus)"
+    InspectionEntity "*" o-- "1" LookupSealVerificationStatusEntity : "tem (sealVerificationShipperStatus)"
+    InspectionEntity "*" o-- "1" LookupSealVerificationStatusEntity : "tem (sealVerificationTapeStatus)"
+```
+
+<h4>Como Ler Este Diagrama:</h4>
+<ul>
+<li><code><<Estereótipos>></code>: Indicam o "tipo" da classe. <code><<TypeORM Entity>></code> é uma classe mapeada para o banco, e <code><<Abstract>></code> é uma classe base.</li>
+<li><code>*--</code> (Composição): A seta preenchida mostra que os <code>items</code> são "parte de" uma <code>InspectionEntity</code>. Se a inspeção for apagada, os seus itens também são.</li>
+<li><code>o--</code> (Agregação): A seta vazia mostra que a <code>InspectionEntity</code> "tem uma" referência a uma entidade de Lookup, mas esta existe independentemente.</li>
+</ul>
+
+<hr>
+
+<h3>2. Colaboração em Ação: O Fluxo de Finalização (Diagrama de Sequência)</h3>
+<p>
+Um diagrama de classes mostra a estrutura, mas um <strong>diagrama de sequência</strong> mostra a colaboração. Este diagrama detalha, passo a passo, como os diferentes componentes do sistema interagem ao longo do tempo para executar um dos nossos casos de uso mais críticos: a finalização de uma inspeção.
+</p>
+
+```mermaid
+sequenceDiagram
+    participant C as InspectionController
+    participant UC as FinalizeInspectionUseCase
+    participant Repo as IInspectionRepositoryPort
+    participant Insp as Inspection (Model)
+    
+    C->>UC: execute(inspectionId)
+    activate UC
+    UC->>Repo: findById(inspectionId)
+    activate Repo
+    Repo-->>UC: inspection
+    deactivate Repo
+    
+    UC->>Insp: isReadyToFinalize()
+    activate Insp
+    Insp-->>UC: true
+    deactivate Insp
+    
+    UC->>Insp: calculateFinalStatus()
+    activate Insp
+    Insp-->>UC: APROVADO
+    deactivate Insp
+    
+    UC->>Insp: finalize()
+    activate Insp
+    Insp-->>UC: 
+    deactivate Insp
+    
+    UC->>Repo: save(inspection)
+    activate Repo
+    Repo-->>UC: inspectionFinalizada
+    deactivate Repo
+    
+    UC-->>C: inspectionFinalizada
+    deactivate UC
+```
+
+<h4>Como Ler Este Diagrama:</h4>
+<ul>
+<li><strong>Atores:</strong> Cada coluna representa um objeto ou classe.</li>
+<li><strong>Linha do Tempo:</strong> A leitura é feita de cima para baixo.</li>
+<li><strong>Setas:</strong> Indicam chamadas de métodos. As setas a tracejado indicam o retorno.</li>
+<li><strong>O Padrão de Arquitetura em Ação:</strong> Note como o <code>Controller</code> apenas chama o <code>UseCase</code>. O <code>UseCase</code> orquestra tudo: ele busca o modelo de domínio (Inspection) através da porta do <code>Repository</code>, executa a lógica de negócio no próprio modelo e, finalmente, pede ao <code>Repository</code> para persistir o resultado.</li>
+</ul>
+
+<hr>
+
+<h3>3. A Orquestração: Como o NestJS Conecta Tudo (Diagramas de Módulo)</h3>
+<p>
+Finalmente, os diagramas de módulo mostram como o NestJS, através de seu poderoso sistema de <strong>Injeção de Dependência</strong>, "conecta" todas as peças. Eles são a planta baixa da configuração do nosso contêiner de DI, demonstrando a aplicação prática do <strong>Princípio da Inversão de Dependência (SOLID)</strong>.
+</p>
+
+<h4>3.1 - O Módulo Principal: <code>InspectionModule</code></h4>
+
+```mermaid
+classDiagram
+    direction TD
+    class InspectionModule {
+        <<NestJS Module>>
+    }
+    class InspectionController { <<ApiLayer>> }
+    class ICreateInspectionUseCase { <<Interface>> DomainLayer }
+    class CreateInspectionUseCaseImpl { DomainLayer }
+    class IInspectionRepositoryPort { <<Interface>> DomainLayer }
+    class InspectionRepository { <<Adapter>> InfraLayer }
+    
+    InspectionModule --* InspectionController : registra
+    InspectionController --o ICreateInspectionUseCase : injeta ↘
+    CreateInspectionUseCaseImpl --o IInspectionRepositoryPort : injeta ↘
+    CreateInspectionUseCaseImpl ..|> ICreateInspectionUseCase : implementa
+    InspectionRepository ..|> IInspectionRepositoryPort : implementa
+```
+
+<h4>3.2 - O Módulo de Suporte: <code>LookupModule</code></h4>
+
+```mermaid
+classDiagram
+    direction LR
+    class LookupModule { <<NestJS Module>> }
+    class LookupController { <<ApiLayer>> }
+    class IFindLookupsByTypeUseCase { <<Interface>> DomainLayer }
+    class FindLookupsByTypeUseCaseImpl { DomainLayer }
+    class ILookupRepositoryPort { <<Interface>> DomainLayer }
+    class LookupRepository { <<Adapter>> InfraLayer }
+
+    LookupModule --* LookupController : registra
+    LookupController --o IFindLookupsByTypeUseCase : injeta ↘
+    FindLookupsByTypeUseCaseImpl --o ILookupRepositoryPort : injeta ↘
+    FindLookupsByTypeUseCaseImpl ..|> IFindLookupsByTypeUseCase : implementa
+    LookupRepository ..|> ILookupRepositoryPort : implementa
+```
+
+<h4>Como Ler Estes Diagramas:</h4>
+<ul>
+<li><strong>Injeção de Dependência (--o):</strong> A seta com círculo vazio mostra a injeção. O ponto mais importante é que os componentes sempre dependem de <strong>abstrações</strong> (<code><<Interface>></code>), nunca de classes concretas de outras camadas. O <code>Controller</code> não "sabe" que <code>CreateInspectionUseCaseImpl</code> existe; ele apenas pede por <code>ICreateInspectionUseCase</code>.</li>
+<li><strong>Implementação (..|&gt;):</strong> A seta pontilhada mostra qual classe concreta implementa uma interface. É no <code>providers</code> do Módulo que esta "ligação" é feita.</li>
+</ul>
