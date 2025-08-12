@@ -265,7 +265,7 @@ Esta é uma visão geral. Para uma análise técnica minuciosa de cada component
 
 <h2 id="product-backlog">🎯 Product Backlog e Histórias de Usuário</h2>
 <p>
-  O desenvolvimento do projeto é guiado por metodologias ágeis. Abaixo está o backlog de produto que define o escopo do MVP (Sprint 1) e as funcionalidades planeadas para iterações futuras (Sprint 2).
+  O desenvolvimento do projeto é guiado por metodologias ágeis. Abaixo está o backlog de produto que define o escopo do MVP (Sprint 1) e as funcionalidades planejadas para iterações futuras (Sprint 2).
 </p>
 <details>
   <summary><strong>Clique para expandir o Backlog Completo de User Stories</strong></summary>
