@@ -11,6 +11,7 @@ on:
 jobs:
   build_and_test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -22,23 +23,16 @@ jobs:
         run: docker-compose -f docker-compose.yml up -d
 
       - name: Wait for services to be healthy
+        timeout-minutes: 5 # Timeout para evitar que o job fique preso
         run: |
-          echo "Waiting for services..."
-          for i in $(seq 1 10); do
-            sleep 10
-            docker-compose -f docker-compose.yml ps
-            if docker-compose -f docker-compose.yml ps | grep "healthy" | wc -l > 2; then
-              echo "Services are healthy!"
-              break
-            fi
-            if [ $i -eq 10 ]; then
-              echo "Timeout: Services did not become healthy."
-              exit 1
-            fi
+          echo "Waiting for backend service to be healthy..."
+          while [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/api)" != "200" ]; do
+            echo -n "."
+            sleep 5
           done
+          echo "Backend is healthy!"
 
-      - name: Run Tests (exemplo)
+      - name: Run Tests (opcional)
+        # Este é um passo de exemplo. Adapte-o para seus comandos de teste.
         run: |
-          # Adicione aqui os comandos para rodar os testes, como
-          # docker-compose exec backend npm run test
-          # ou um comando de teste de integração
+          docker-compose exec backend npm test
