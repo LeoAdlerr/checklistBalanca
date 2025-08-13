@@ -1,0 +1,44 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Build Docker Images
+        run: docker-compose -f docker-compose.yml build
+
+      - name: Start Services
+        run: docker-compose -f docker-compose.yml up -d
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services..."
+          for i in $(seq 1 10); do
+            sleep 10
+            docker-compose -f docker-compose.yml ps
+            if docker-compose -f docker-compose.yml ps | grep "healthy" | wc -l > 2; then
+              echo "Services are healthy!"
+              break
+            fi
+            if [ $i -eq 10 ]; then
+              echo "Timeout: Services did not become healthy."
+              exit 1
+            fi
+          done
+
+      - name: Run Tests (exemplo)
+        run: |
+          # Adicione aqui os comandos para rodar os testes, como
+          # docker-compose exec backend npm run test
+          # ou um comando de teste de integração
