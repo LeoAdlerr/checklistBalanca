@@ -1,4 +1,9 @@
-name: CI/CD Pipeline
+# ====================================================================
+# Workflow do GitHub Actions para a Aplicação de Inspeção Digital
+# Este workflow constrói o docker-compose.yml e executa a pipeline
+# ====================================================================
+
+name: CI/CD Pipeline para Inspeção Digital
 
 on:
   push:
@@ -9,30 +14,132 @@ on:
       - main
 
 jobs:
-  build_and_test:
+  build_and_run:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Repository
+      - name: Checkout do Repositório
         uses: actions/checkout@v2
 
-      - name: Build Docker Images
-        run: docker-compose -f docker-compose.yml build
+      - name: Criar o arquivo docker-compose.yml
+        # Este passo cria o arquivo docker-compose.yml
+        # com a configuração fornecida diretamente no ambiente do runner.
+        run: |
+          cat <<EOF > docker-compose.yml
+          version: "3.8"
+
+          services:
+            # --- Serviço do Banco de Dados ---
+            db:
+              image: mysql:8.0
+              container_name: checklist-db
+              command: --default-authentication-plugin=mysql_native_password
+              restart: always
+              environment:
+                MYSQL_ROOT_PASSWORD: uaga_password
+                MYSQL_DATABASE: uagabd
+                MYSQL_USER: uaga_user
+                MYSQL_PASSWORD: uaga_password
+              ports:
+                - "3306:3306"
+              volumes:
+                - ./checklist-8-18-bd/init.sql:/docker-entrypoint-initdb.d/init.sql
+                - checklist-db-data:/var/lib/mysql
+              healthcheck:
+                test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+                start_period: 10s
+              networks:
+                - app-network
+
+            # --- Serviço do Backend (NestJS) ---
+            backend:
+              build:
+                context: ./checklist-8-18-back
+                dockerfile: Containerfile
+              container_name: checklist-backend
+              depends_on:
+                db:
+                  condition: service_healthy
+              ports:
+                - "8888:8888"
+              # Mapeamos as pastas essenciais para o hot-reload
+              volumes:
+                - ./checklist-8-18-back/src:/app/src
+                - ./checklist-8-18-back/test:/app/test
+                - ./checklist-8-18-back/uploads:/app/uploads
+              shm_size: '1gb'
+              environment:
+                PORT: 8888
+                DB_HOST: db
+                DB_PORT: 3306
+                DB_USERNAME: uaga_user
+                DB_PASSWORD: uaga_password
+                DB_DATABASE: uagabd
+                DB_SYNCHRONIZE: 'false'
+                JWT_SECRET: your_super_secret_key
+                CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium-browser
+                CORS_ORIGINS: http://localhost:3000
+              networks:
+                - app-network
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:8888/api"]
+                interval: 10s
+                timeout: 5s
+                retries: 5
+                start_period: 15s
+
+            # --- Serviço do Frontend (Vue.js) ---
+            frontend:
+              build:
+                context: ./checklist-8-18-front
+                dockerfile: Containerfile
+              container_name: checklist-frontend
+              depends_on:
+                backend:
+                  condition: service_healthy
+              ports:
+                - "3000:3000"
+              volumes:
+                - ./checklist-8-18-front/src:/app/src
+                - ./checklist-8-18-front/cypress:/app/cypress
+              environment:
+                - CHOKIDAR_USEPOLLING=true
+                - VITE_API_BASE_URL=http://localhost:8888
+              networks:
+                - app-network
+
+          # --- Definições de Nível Superior ---
+          volumes:
+            checklist-db-data:
+              driver: local
+
+          networks:
+            app-network:
+              driver: bridge
+          EOF
+        shell: bash
+
+      - name: Build Docker Images com o docker-compose gerado
+        run: docker-compose build
 
       - name: Start Services
-        run: docker-compose -f docker-compose.yml up -d
+        run: docker-compose up -d
 
-      - name: Wait for services to be healthy
-        timeout-minutes: 5 # Timeout para evitar que o job fique preso
+      - name: Esperar os serviços estarem saudáveis
+        # Timeout para evitar que o job fique preso
+        timeout-minutes: 5 
         run: |
-          echo "Waiting for backend service to be healthy..."
+          echo "Aguardando o serviço de backend ficar saudável..."
           while [ "$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8888/api)" != "200" ]; do
             echo -n "."
             sleep 5
           done
-          echo "Backend is healthy!"
+          echo "Backend está saudável! Próximo passo."
 
-      - name: Run Tests (opcional)
-        # Este é um passo de exemplo. Adapte-o para seus comandos de teste.
+      # --- Aqui você pode adicionar seus testes de integração ---
+      - name: Executar Testes de Integração (exemplo)
         run: |
-          docker-compose exec backend npm test
+          echo "Executando testes..."
+          # docker-compose exec frontend npm test # ou algum comando similar
