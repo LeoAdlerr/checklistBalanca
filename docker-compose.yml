@@ -1,6 +1,6 @@
 # ====================================================================
 # Docker Compose Unificado para a Aplicação de Inspeção Digital 8/18
-# Versão Corrigida e Simplificada
+# Versão com Perfis (Profiles) para Dev e Prod
 # ====================================================================
 version: "3.8"
 
@@ -30,22 +30,17 @@ services:
     networks:
       - app-network
 
-  # --- Serviço do Backend (NestJS) ---
-  backend:
+  # Serviço do Backend (NestJS) para PROD
+  backend-prod:
     build:
       context: ./checklist-8-18-back
       dockerfile: Containerfile
-    container_name: checklist-backend
+    container_name: checklist-backend-prod
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8888:8888"
-    # Mapeamos as pastas essenciais para o hot-reload
-    volumes:
-      - ./checklist-8-18-back/src:/app/src
-      - ./checklist-8-18-back/test:/app/test
-      - ./checklist-8-18-back/uploads:/app/uploads
     shm_size: '1gb'
     environment:
       PORT: 8888
@@ -67,23 +62,17 @@ services:
       retries: 5
       start_period: 15s
 
-  # --- Serviço do Frontend (Vue.js) ---
-  frontend:
+  # Serviço do Frontend (Vue.js) para PROD
+  frontend-prod:
     build:
       context: ./checklist-8-18-front
       dockerfile: Containerfile
-    container_name: checklist-frontend
+    container_name: checklist-frontend-prod
     depends_on:
-      backend:
+      backend-prod:
         condition: service_healthy
     ports:
-      - "3000:3000"
-    volumes:
-      - ./checklist-8-18-front/src:/app/src
-      - ./checklist-8-18-front/cypress:/app/cypress
-    environment:
-      - CHOKIDAR_USEPOLLING=true
-      - VITE_API_BASE_URL=http://localhost:8888
+      - "3000:80"
     networks:
       - app-network
 

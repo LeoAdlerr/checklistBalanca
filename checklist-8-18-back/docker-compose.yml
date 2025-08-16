@@ -1,46 +1,47 @@
 version: "3.8"
 
 services:
-  db:
-    image: mysql:8.0
-    command: --default-authentication-plugin=mysql_native_password
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: uaga_password
-      MYSQL_DATABASE: uagabd
-      MYSQL_USER: uaga_user
-      MYSQL_PASSWORD: uaga_password
-    ports:
-      - "3306:3306"
-    volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      retries: 5
-      start_period: 10s
+  backend-app-prod:
+      build:
+        context: .
+        dockerfile: Containerfile
+      container_name: backend-app-prod
+      
+      ports:
+        - "8080:8080"
+      volumes:
+        - ./src:/app/src
+        - ./test:/app/test
+        - ./uploads:/app/uploads
+      shm_size: '1gb'
+      environment:
+        PORT: 8080
+        DB_HOST: host.docker.internal
+        DB_PORT: 3306
+        DB_USERNAME: uaga_user
+        DB_PASSWORD: uaga_password
+        DB_DATABASE: uagabd
+        DB_SYNCHRONIZE: 'false'
+        JWT_SECRET: your_super_secret_key
+        CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium-browser
+        CORS_ORIGINS: http://localhost:5173,http://localhost:3000,host.docker.internal:3000
 
-  backend:
+  backend-app-dev:
     build:
       context: .
-      dockerfile: Containerfile
-    container_name: backend-app
-    depends_on:
-      db:
-        condition: service_healthy
+      dockerfile: Containerfile.dev
+    container_name: backend-app-dev
+    
     ports:
       - "8888:8888"
-      
     volumes:
-      - src:/app/src
-      - test:/app/test
-      - uploads:/app/uploads
-      
+      - ./src:/app/src
+      - ./test:/app/test
+      - ./uploads:/app/uploads
     shm_size: '1gb'
-
     environment:
       PORT: 8888
-      DB_HOST: db
+      DB_HOST: host.docker.internal
       DB_PORT: 3306
       DB_USERNAME: uaga_user
       DB_PASSWORD: uaga_password
@@ -48,4 +49,4 @@ services:
       DB_SYNCHRONIZE: 'false'
       JWT_SECRET: your_super_secret_key
       CHROMIUM_EXECUTABLE_PATH: /usr/bin/chromium-browser
-      CORS_ORIGINS: http://localhost:3000 # Ajustado para a porta do frontend
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://outro-dominio.com,host.docker.internal:3000

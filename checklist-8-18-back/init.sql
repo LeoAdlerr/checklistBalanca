@@ -2,7 +2,6 @@ CREATE DATABASE IF NOT EXISTS `uagabd`
   DEFAULT CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
-
 -- =============================================================================
 -- NOTA TÉCNICA: Criação explícita de usuário com privilégios elevados.
 -- =============================================================================
@@ -15,42 +14,41 @@ ALTER DATABASE `uagabd` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `uagabd`;
 
 -- =============================================================================
--- DDL (Data Definition Language) - SEM ALTERAÇÕES
+-- DDL (Data Definition Language)
 -- =============================================================================
-
 CREATE TABLE `lookup_statuses` (
-  `id` INT PRIMARY KEY,
-  `name` VARCHAR(50) NOT NULL UNIQUE
+`id` INT PRIMARY KEY,
+`name` VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `lookup_modalities` (
-  `id` INT PRIMARY KEY,
-  `name` VARCHAR(50) NOT NULL UNIQUE
+`id` INT PRIMARY KEY,
+`name` VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `lookup_operation_types` (
-  `id` INT PRIMARY KEY,
-  `name` VARCHAR(50) NOT NULL UNIQUE
+`id` INT PRIMARY KEY,
+`name` VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `lookup_unit_types` (
-  `id` INT PRIMARY KEY,
-  `name` VARCHAR(50) NOT NULL UNIQUE
+`id` INT PRIMARY KEY,
+`name` VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `lookup_container_types` (
-  `id` INT PRIMARY KEY,
-  `name` VARCHAR(50) NOT NULL UNIQUE
+`id` INT PRIMARY KEY,
+`name` VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `lookup_checklist_item_statuses` (
-  `id` INT PRIMARY KEY,
-  `name` VARCHAR(50) NOT NULL UNIQUE
+`id` INT PRIMARY KEY,
+`name` VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `lookup_seal_verification_statuses` (
-  `id` INT PRIMARY KEY,
-  `name` VARCHAR(50) NOT NULL UNIQUE
+`id` INT PRIMARY KEY,
+`name` VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `master_inspection_points` (
@@ -59,7 +57,8 @@ CREATE TABLE `master_inspection_points` (
   `name` VARCHAR(255) NOT NULL,
   `description` TEXT,
   `category` VARCHAR(50) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB;
+
 
 CREATE TABLE `inspections` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -95,6 +94,8 @@ CREATE TABLE `inspections` (
   `generated_pdf_path` VARCHAR(512) NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  -- Foreign Keys
   FOREIGN KEY (`status_id`) REFERENCES `lookup_statuses`(`id`),
   FOREIGN KEY (`modality_id`) REFERENCES `lookup_modalities`(`id`),
   FOREIGN KEY (`operation_type_id`) REFERENCES `lookup_operation_types`(`id`),
@@ -103,8 +104,21 @@ CREATE TABLE `inspections` (
   FOREIGN KEY (`seal_verification_rfb_status_id`) REFERENCES `lookup_seal_verification_statuses`(`id`),
   FOREIGN KEY (`seal_verification_shipper_status_id`) REFERENCES `lookup_seal_verification_statuses`(`id`),
   FOREIGN KEY (`seal_verification_tape_status_id`) REFERENCES `lookup_seal_verification_statuses`(`id`),
+
+  -- Índices para campos de pesquisa comum que você já tinha (excelente!)
   INDEX `idx_inspections_driver_name` (`driver_name`),
-  INDEX `idx_inspections_vehicle_plates` (`vehicle_plates`)
+  INDEX `idx_inspections_vehicle_plates` (`vehicle_plates`),
+  
+  -- Índices para todas as chaves estrangeiras para otimizar JOINs e DELETEs
+  INDEX `idx_status_id` (`status_id`),
+  INDEX `idx_modality_id` (`modality_id`),
+  INDEX `idx_operation_type_id` (`operation_type_id`),
+  INDEX `idx_unit_type_id` (`unit_type_id`),
+  INDEX `idx_container_type_id` (`container_type_id`),
+  INDEX `idx_seal_rfb_status_id` (`seal_verification_rfb_status_id`),
+  INDEX `idx_seal_shipper_status_id` (`seal_verification_shipper_status_id`),
+  INDEX `idx_seal_tape_status_id` (`seal_verification_tape_status_id`)
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `inspection_checklist_items` (
@@ -115,10 +129,20 @@ CREATE TABLE `inspection_checklist_items` (
   `observations` TEXT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
   UNIQUE `unique_inspection_point` (`inspection_id`, `master_point_id`),
+  
+  -- Foreign Keys
   FOREIGN KEY (`inspection_id`) REFERENCES `inspections`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`master_point_id`) REFERENCES `master_inspection_points`(`id`),
-  FOREIGN KEY (`status_id`) REFERENCES `lookup_checklist_item_statuses`(`id`)
+  FOREIGN KEY (`status_id`) REFERENCES `lookup_checklist_item_statuses`(`id`),
+  
+  -- Índice principal para buscar todos os itens de uma inspeção
+  INDEX `idx_inspection_id` (`inspection_id`),
+  -- Índices secundários para relatórios e análises
+  INDEX `idx_master_point_id` (`master_point_id`),
+  INDEX `idx_status_id_item` (`status_id`)
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `item_evidences` (
@@ -129,8 +153,15 @@ CREATE TABLE `item_evidences` (
   `file_size` INT NOT NULL,
   `mime_type` VARCHAR(100) NOT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`item_id`) REFERENCES `inspection_checklist_items`(`id`) ON DELETE CASCADE
+  
+  -- Foreign Key
+  FOREIGN KEY (`item_id`) REFERENCES `inspection_checklist_items`(`id`) ON DELETE CASCADE,
+
+  -- Índice principal para buscar todas as evidências de um item
+  INDEX `idx_item_id` (`item_id`)
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 
 
 -- =============================================================================

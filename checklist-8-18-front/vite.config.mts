@@ -11,8 +11,9 @@ import { VueRouterAutoImports } from 'unplugin-vue-router'
 import Vuetify, { transformAssetUrls } from 'vite-plugin-vuetify'
 
 // Utilities
-import { defineConfig, configDefaults } from 'vitest/config' // <-- MUDANÇA AQUI
+import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
+import { configDefaults } from 'vitest/config'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -105,7 +106,7 @@ export default defineConfig({
     },
     exclude: [
       ...configDefaults.exclude,
-      'e2e/**',
+      'e2e/**', 
     ],
   },
 })

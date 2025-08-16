@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify';
 import { createTestingPinia } from '@pinia/testing';
 import { useInspectionsStore } from '@/stores/inspections';
 import IndexPage from './index.vue';
-import type { Inspection } from '@/models'; // <-- MUDANÇA AQUI: Corrigido o caminho do import.
+import type { Inspection } from '@/models/inspection.model';
 import { useDisplay } from 'vuetify';
 
 const mockRouter = {

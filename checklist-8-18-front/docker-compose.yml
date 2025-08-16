@@ -1,10 +1,10 @@
 version: "3.8"
 
 services:
-  frontend:
+  frontend-dev:
     build:
       context: .
-      dockerfile: Containerfile
+      dockerfile: Containerfile.dev
     container_name: frontend-app-dev
     ports:
       # Use a porta que você configurou no seu package.json e vite.config (ex: 3000)
@@ -16,3 +16,16 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true
       - VITE_API_BASE_URL=http://localhost:8888
+  
+  frontend-prod:
+    build:
+      context: ./checklist-8-18-front
+      dockerfile: Containerfile
+    container_name: checklist-frontend-prod
+    depends_on:
+      - backend-prod
+    ports:
+      # Mapeia a porta 3000 da sua máquina para a porta 80 do Nginx dentro do contêiner
+      - "3000:80" 
+    networks: [ app-network ]
+    profiles: ["prod"]

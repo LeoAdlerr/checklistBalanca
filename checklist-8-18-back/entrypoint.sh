@@ -3,7 +3,7 @@
 set -e
 
 echo "Aguardando MySQL usando wait-for-it.sh..."
-./wait-for-it.sh db:3306 --timeout=90 --strict -- echo "MySQL está pronto!"
+./wait-for-it.sh host.docker.internal:3306 --timeout=90 --strict -- echo "MySQL está pronto!"
 
 echo "Executando testes unitários..."
 yarn test
