@@ -14,16 +14,19 @@
 <ul>
     <li>
         <p>
-            <strong>Sprint 1 (Concluída):</strong> Nesta fase, entregamos a Prova de Conceito e o fluxo principal da
-            aplicação, validando a arquitetura e as funcionalidades core.
+            <strong>Sprint 1 (Concluída em 08 de Agosto de 2025):</strong> Entregamos a Prova de Conceito (PoC) e o
+            fluxo principal da
+            aplicação, validando a arquitetura e as funcionalidades core do produto.
             <br>
             ➡️ <strong><a href="./sprints/SPRINT_1.md">Ver Retrospectiva e Entregas da Sprint 1</a></strong>
         </p>
     </li>
     <li>
         <p>
-            <strong>Sprint 2 (Em Planejamento):</strong> O objetivo desta sprint é implementar os 7 requisitos
-            essenciais que transformarão a PoC no MVP final, pronto para a homologação com os usuários.
+            <strong>Sprint 2 (Planejamento Concluído):</strong> Com o escopo de <strong>65 Story Points</strong>, esta
+            sprint tem o objetivo de implementar os 7 requisitos essenciais que transformarão a PoC no <strong>MVP
+                final</strong>, pronto para a homologação. O desenvolvimento inicia em <strong>18 de Agosto de
+                2025</strong>.
             <br>
             ➡️ <strong><a href="./sprints/SPRINT_2.md">Ver Planejamento Detalhado da Sprint 2</a></strong>
         </p>
@@ -33,8 +36,8 @@
 
 <h2 id="requisitos-de-negocio">📋 Requisitos de Negócio</h2>
 <p>
-    Abaixo estão listados todos os requisitos de negócio levantados até o momento. Cada requisito possui um
-    identificador único (REQ-XX) para permitir a rastreabilidade direta com as Histórias de Usuário na tabela a seguir.
+    Abaixo estão listados todos os requisitos de negócio levantados até o momento, com seus respectivos identificadores
+    (REQ-XX) para rastreabilidade.
 </p>
 
 <h3>Requisitos Entregues (MVP - Sprint 1)</h3>
@@ -61,10 +64,9 @@
 
 <hr>
 
-<h2 id="user-stories">📑 Histórias de Usuário (User Stories)</h2>
+<h2 id="user-stories">📑 Histórias de Usuário e Tarefas</h2>
 <p>
-    A tabela a seguir mapeia cada História de Usuário ao requisito de negócio que ela atende, detalhando seu épico e
-    status atual no ciclo de desenvolvimento.
+    A tabela a seguir mapeia cada item do backlog ao requisito que ele atende, detalhando seu épico e estimativa.
 </p>
 
 <table border="1" cellpadding="10" cellspacing="0" width="100%">
@@ -72,141 +74,151 @@
         <tr bgcolor="#f2f2f2">
             <th align="left"><b>Épico</b></th>
             <th align="left"><b>ID</b></th>
-            <th align="left"><b>História de Usuário (User Story)</b></th>
+            <th align="left"><b>Título</b></th>
             <th align="left"><b>Requisito Atendido</b></th>
+            <th align="center"><b>Pontos (SP)</b></th>
             <th align="left"><b>Status</b></th>
         </tr>
     </thead>
     <tbody>
         <tr>
             <td valign="top" rowspan="5">Gestão de Inspeções (Core)</td>
-            <td valign="top"><strong>US-01</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> iniciar um novo checklist...
-            </td>
-            <td valign="top" align="center"><strong>REQ-08</strong></td>
-            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue (Sprint 1)</b></td>
+            <td><strong>US-01</strong></td>
+            <td>Iniciar um novo checklist...</td>
+            <td align="center"><strong>REQ-08</strong></td>
+            <td align="center">N/A</td>
+            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>US-02</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> avaliar cada um dos 18
-                pontos...</td>
-            <td valign="top" align="center"><strong>REQ-09, 10, 11</strong></td>
-            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue (Sprint 1)</b></td>
+            <td><strong>US-02</strong></td>
+            <td>Avaliar cada um dos 18 pontos...</td>
+            <td align="center"><strong>REQ-09, 10, 11</strong></td>
+            <td align="center">N/A</td>
+            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>US-03</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> finalizar o checklist...</td>
-            <td valign="top" align="center"><strong>REQ-14</strong></td>
-            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue (Sprint 1)</b></td>
+            <td><strong>US-03</strong></td>
+            <td>Finalizar o checklist...</td>
+            <td align="center"><strong>REQ-14</strong></td>
+            <td align="center">N/A</td>
+            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>US-13</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> que o sistema me apresente o
-                checklist correto (8 ou 18 pontos)...</td>
-            <td valign="top" align="center"><strong>REQ-04</strong></td>
+            <td><strong>US-13</strong></td>
+            <td>Apresentar checklist dinâmico (8 ou 18 pontos)</td>
+            <td align="center"><strong>REQ-04</strong></td>
+            <td align="center">6</td>
             <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>US-14</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> poder anexar no máximo uma
-                foto de evidência por item...</td>
-            <td valign="top" align="center"><strong>REQ-06</strong></td>
+            <td><strong>US-14</strong></td>
+            <td>Limitar evidência a uma foto por item</td>
+            <td align="center"><strong>REQ-06</strong></td>
+            <td align="center">2</td>
             <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
         </tr>
         <tr>
             <td valign="top" rowspan="2">Relatórios e Análise</td>
-            <td valign="top"><strong>US-05</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> que um relatório em PDF seja
-                gerado...</td>
-            <td valign="top" align="center"><strong>REQ-12</strong></td>
-            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue (Sprint 1)</b></td>
+            <td><strong>US-05</strong></td>
+            <td>Gerar um relatório em PDF...</td>
+            <td align="center"><strong>REQ-12</strong></td>
+            <td align="center">N/A</td>
+            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>US-06</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> acessar um dashboard com a
-                listagem das inspeções...</td>
-            <td valign="top" align="center"><strong>REQ-13</strong></td>
-            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue (Sprint 1)</b></td>
+            <td><strong>US-06</strong></td>
+            <td>Acessar um dashboard com a listagem...</td>
+            <td align="center"><strong>REQ-13</strong></td>
+            <td align="center">N/A</td>
+            <td valign="top" bgcolor="#e8f5e9">✅ <b>Entregue</b></td>
         </tr>
         <tr>
             <td valign="top" rowspan="3">Gestão de Acesso</td>
-            <td valign="top"><strong>US-04</strong></td>
-            <td valign="top"><strong>Como um</strong> membro da equipe, <strong>eu quero</strong> fazer login com meu
-                usuário e senha...</td>
-            <td valign="top" align="center"><strong>REQ-02</strong></td>
+            <td><strong>US-04</strong></td>
+            <td>Login de usuário com base para permissões</td>
+            <td align="center"><strong>REQ-02</strong></td>
+            <td align="center">15</td>
             <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>US-08</strong></td>
-            <td valign="top"><strong>Como um</strong> usuário autenticado, <strong>eu quero</strong> visualizar apenas
-                os tipos de inspeção para os quais tenho permissão...</td>
-            <td valign="top" align="center"><strong>REQ-02</strong></td>
+            <td><strong>US-08</strong></td>
+            <td>Visualizar apenas inspeções permitidas</td>
+            <td align="center"><strong>REQ-02</strong></td>
+            <td align="center">N/A</td>
             <td valign="top" bgcolor="#eeeeee">💡 <b>Backlog</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>US-09</strong></td>
-            <td valign="top"><strong>Como um</strong> Administrador, <strong>eu quero</strong> uma interface para
-                criar/editar usuários e atribuir permissões...</td>
-            <td valign="top" align="center"><strong>REQ-02</strong></td>
+            <td><strong>US-09</strong></td>
+            <td>Interface de admin para gerenciar permissões</td>
+            <td align="center"><strong>REQ-02</strong></td>
+            <td align="center">N/A</td>
             <td valign="top" bgcolor="#eeeeee">💡 <b>Backlog</b></td>
         </tr>
         <tr>
-            <td valign="top">Melhorias de Usabilidade</td>
-            <td valign="top"><strong>US-07</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> ser guiado para o próximo item
-                de checklist não preenchido...</td>
-            <td valign="top" align="center"><strong>REQ-01</strong></td>
+            <td>Melhorias de Usabilidade</td>
+            <td><strong>US-07</strong></td>
+            <td>Navegação guiada para o próximo item</td>
+            <td align="center"><strong>REQ-01</strong></td>
+            <td align="center">4</td>
             <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
         </tr>
         <tr>
-            <td valign="top" rowspan="4">Finalização e Relatórios</td>
-            <td valign="top"><strong>US-10</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> capturar assinaturas
-                digitalmente na tela...</td>
-            <td valign="top" align="center"><strong>REQ-03</strong></td>
+            <td valign="top" rowspan="3">Finalização e Relatórios</td>
+            <td><strong>US-10</strong></td>
+            <td>Captura de assinaturas digitais na tela</td>
+            <td align="center"><strong>REQ-03</strong></td>
+            <td align="center">5</td>
             <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>US-11</strong></td>
-            <td valign="top"><strong>Como um</strong> sistema, <strong>eu quero</strong> gerar um relatório PDF dinâmico
-                (8 ou 18 pontos) e assinado...</td>
-            <td valign="top" align="center"><strong>REQ-05</strong></td>
+            <td><strong>US-15</strong></td>
+            <td>Geração de Relatório Fotográfico separado</td>
+            <td align="center"><strong>REQ-05</strong></td>
+            <td align="center">6</td>
             <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>US-15</strong></td>
-            <td valign="top"><strong>Como um</strong> inspetor, <strong>eu quero</strong> poder gerar um relatório PDF
-                separado contendo apenas as imagens...</td>
-            <td valign="top" align="center"><strong>REQ-05</strong></td>
-            <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
-        </tr>
-        <tr>
-            <td valign="top"><strong>US-16</strong></td>
-            <td valign="top"><strong>Como um</strong> sistema, <strong>eu quero</strong> armazenar os relatórios gerados
-                em uma estrutura de pastas organizada...</td>
-            <td valign="top" align="center"><strong>REQ-07</strong></td>
+            <td><strong>US-16</strong></td>
+            <td>Armazenamento de relatórios em pastas</td>
+            <td align="center"><strong>REQ-07</strong></td>
+            <td align="center">3</td>
             <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
         </tr>
         <tr>
             <td valign="top" rowspan="2">Infraestrutura e DevOps</td>
-            <td valign="top"><strong>TASK-01</strong></td>
-            <td valign="top">Setup e Configuração do Ambiente CI/CD para Homologação.</td>
-            <td valign="top" align="center">N/A</td>
+            <td><strong>DevOps</strong></td>
+            <td>Setup e Melhorias do Ambiente CI/CD</td>
+            <td align="center"><strong>N/A</strong></td>
+            <td align="center">12</td>
             <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
         </tr>
         <tr>
-            <td valign="top"><strong>TASK-02</strong></td>
-            <td valign="top">Deploy da Aplicação em Ambiente de Homologação.</td>
-            <td valign="top" align="center">N/A</td>
+            <td><strong>Deploy</strong></td>
+            <td>Deploy e Config. do Ambiente de Homologação</td>
+            <td align="center"><strong>N/A</strong></td>
+            <td align="center">9</td>
             <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
         </tr>
         <tr>
-            <td valign="top">Melhorias de Usabilidade</td>
-            <td valign="top"><strong>US-12</strong></td>
-            <td valign="top"><strong>Como um</strong> usuário registrado, <strong>eu quero</strong> poder salvar e
-                gerenciar uma imagem da minha assinatura...</td>
-            <td valign="top" align="center"><strong>REQ-03</strong></td>
+            <td>Documentação</td>
+            <td><strong>TASK-03</strong></td>
+            <td>Criação do Manual do Usuário</td>
+            <td align="center"><strong>N/A</strong></td>
+            <td align="center">3</td>
+            <td valign="top" bgcolor="#fffde7">📅 <b>Sprint 2</b></td>
+        </tr>
+        <tr>
+            <td>Melhorias de Usabilidade</td>
+            <td><strong>US-12</strong></td>
+            <td>Salvar e gerenciar assinatura no perfil</td>
+            <td align="center"><strong>REQ-03</strong></td>
+            <td align="center">N/A</td>
             <td valign="top" bgcolor="#FFF3E0">📅 <b>Sprint 3</b></td>
+        </tr>
+        <tr bgcolor="#f2f2f2">
+            <td colspan="4" align="right"><b>Total de Pontos (Sprint 2):</b></td>
+            <td align="center"><b>65</b></td>
+            <td></td>
         </tr>
     </tbody>
 </table>

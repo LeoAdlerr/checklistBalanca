@@ -256,7 +256,7 @@
 
 <h2 id="gestao-sprint-1">📈 Gestão da Sprint 1</h2>
 <p>
-    O desenvolvimento do MVP ocorreu entre <strong>01 de Julho de 2025</strong> e <strong>08 de Agosto de 2025</strong>.
+    O desenvolvimento da fase alpha ocorreu entre <strong>01 de Julho de 2025</strong> e <strong>08 de Agosto de 2025</strong>.
     A entrega foi concluída com sucesso, cobrindo 100% do escopo planeado.
 </p>
 <details>
