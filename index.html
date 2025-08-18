@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burndown Chart - Sprint 2</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f9f9f9; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1, h2 { color: #003366; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .sprint-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; background-color: #eef4ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .sprint-info div { text-align: center; }
+        .sprint-info span { display: block; font-size: 1.5em; font-weight: bold; color: #003366; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; vertical-align: middle; }
+        th { background-color: #f2f7ff; font-weight: bold; }
+        .task-done { text-decoration: line-through; color: #888; }
+        input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        select { padding: 5px; border-radius: 4px; border: 1px solid #ddd; }
+        select:disabled { background-color: #f1f1f1; cursor: not-allowed; }
+        .chart-container { margin-top: 30px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📊 Burndown Chart Interativo - Sprint 2</h1>
+    <p>Acompanhamento do progresso da Sprint 2 (<strong>18/Ago a 29/Ago</strong>), com base no escopo refinado de <strong>33 Pontos</strong>.</p>
+
+    <div class="sprint-info">
+        <div>Total de Pontos Planejados<span id="total-points">--</span></div>
+        <div>Duração da Sprint<span id="sprint-duration">--</span></div>
+        <div>Média de Pontos/Dia<span id="points-per-day">--</span></div>
+    </div>
+
+    <div class="chart-container">
+        <h2>Gráfico de Burndown</h2>
+        <canvas id="burndownChart"></canvas>
+    </div>
+
+    <h2>Sprint Backlog - Lista de Tarefas (18)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:5%">✔</th>
+                <th style="width:15%">Dia Concluído</th>
+                <th>Tarefa</th>
+                <th style="width:5%">Pontos</th>
+                <th style="width:15%">User Story Pai</th>
+            </tr>
+        </thead>
+        <tbody id="task-list-body"></tbody>
+    </table>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const totalPoints = 33;
+    const sprintDuration = 10; // Duração em dias úteis
+    const storageKey = 'sprint2_uaga_tasks_data_v2';
+
+    let burndownChart;
+    let sprintTasks;
+
+    const initialTasks = [
+        // US-29 (8 SP)
+        { id: 'TASK-60', description: '[Deploy] Configuração do IIS para o Backend (Node.js)', points: 3, group: 'US-29', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-61', description: '[Deploy] Configuração do IIS para o Frontend (Vue SPA)', points: 2, group: 'US-29', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-62', description: '[Deploy] Implementação do Fluxo de Atualização via Git', points: 2, group: 'US-29', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-63', description: '[QA] Validação e Teste de Fumaça do Ambiente', points: 1, group: 'US-29', isCompleted: false, dayCompleted: null },
+        // US-04 (8 SP)
+        { id: 'TASK-64', description: '[BD] Criar Tabela \'users\'', points: 1, group: 'US-04', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-65', description: '[BE] Implementar Lógica de Autenticação (Service e Strategies)', points: 3, group: 'US-04', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-66', description: '[BE] Configurar Camada de API (Módulo, Controller e Guard)', points: 1, group: 'US-04', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-67', description: '[FE] Desenvolver Página de Login e Store Pinia', points: 2, group: 'US-04', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-68', description: '[FE/Test] Implementar Proteção de Rotas e Teste E2E', points: 1, group: 'US-04', isCompleted: false, dayCompleted: null },
+        // US-28 (5 SP)
+        { id: 'TASK-69', description: '[DevOps] Configurar Ambiente de Testes Unitários do Backend', points: 3, group: 'US-28', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-70', description: '[DevOps] Configurar Ambiente de Testes Unitários do Frontend', points: 2, group: 'US-28', isCompleted: false, dayCompleted: null },
+        // US-33 (5 SP)
+        { id: 'TASK-71', description: '[DevOps] Orquestrar o Backend em Modo de Produção', points: 1, group: 'US-33', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-72', description: '[DevOps] Criar Imagem de Produção do Frontend com Nginx', points: 2, group: 'US-33', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-73', description: '[DevOps] Integrar e Configurar a Rede dos Serviços', points: 2, group: 'US-33', isCompleted: false, dayCompleted: null },
+        // US-34 (3 SP)
+        { id: 'TASK-74', description: '[DevOps] Criar Serviço Docker-Compose para o Cypress Runner', points: 2, group: 'US-34', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-75', description: '[DevOps] Criar o Script de Orquestração dos Testes E2E', points: 1, group: 'US-34', isCompleted: false, dayCompleted: null },
+        // US-17 (3 SP) - Errata no total da tabela, a soma é 4. Assumindo 3, ajustando a US-77 para 1 ponto.
+        { id: 'TASK-76', description: '[BE] Criar Endpoint para Nova Inspeção', points: 2, group: 'US-17', isCompleted: false, dayCompleted: null },
+        { id: 'TASK-77', description: '[FE] Desenvolver Fluxo de Criação de Inspeção', points: 1, group: 'US-17', isCompleted: false, dayCompleted: null }
+    ];
+
+    function updateSprintInfo() {
+        document.getElementById('total-points').textContent = totalPoints;
+        document.getElementById('sprint-duration').textContent = `${sprintDuration} Dias Úteis`;
+        document.getElementById('points-per-day').textContent = (totalPoints / sprintDuration).toFixed(2);
+    }
+
+    function loadData() {
+        const savedData = localStorage.getItem(storageKey);
+        sprintTasks = savedData ? JSON.parse(savedData) : initialTasks;
+    }
+
+    function saveData() {
+        localStorage.setItem(storageKey, JSON.stringify(sprintTasks));
+    }
+
+    function renderTaskList() {
+        const taskListBody = document.getElementById('task-list-body');
+        taskListBody.innerHTML = '';
+
+        sprintTasks.forEach((task, index) => {
+            const row = document.createElement('tr');
+            if (task.isCompleted) row.classList.add('task-done');
+
+            const dayOptions = Array.from({ length: sprintDuration }, (_, i) => 
+                `<option value="${i + 1}" ${task.dayCompleted === (i + 1) ? 'selected' : ''}>Dia ${i + 1}</option>`
+            ).join('');
+
+            row.innerHTML = `
+                <td><input type="checkbox" data-index="${index}" ${task.isCompleted ? 'checked' : ''}></td>
+                <td>
+                    <select data-index="${index}" ${!task.isCompleted ? 'disabled' : ''}>
+                        <option value="">Selecione</option>
+                        ${dayOptions}
+                    </select>
+                </td>
+                <td><b>${task.id}</b>: ${task.description}</td>
+                <td>${task.points}</td>
+                <td>${task.group}</td>
+            `;
+            taskListBody.appendChild(row);
+        });
+        addEventListeners();
+    }
+
+    function addEventListeners() {
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                sprintTasks[index].isCompleted = e.target.checked;
+                if (!sprintTasks[index].isCompleted) sprintTasks[index].dayCompleted = null;
+                renderTaskList();
+                saveData();
+                updateChart();
+            });
+        });
+
+        document.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                sprintTasks[index].dayCompleted = e.target.value ? parseInt(e.target.value) : null;
+                saveData();
+                updateChart();
+            });
+        });
+    }
+
+    function updateChart() {
+        const labels = Array.from({ length: sprintDuration + 1 }, (_, i) => `Dia ${i}`);
+        const idealData = labels.map((_, i) => Math.max(0, totalPoints - (i * (totalPoints / sprintDuration))));
+        
+        const realData = [];
+        for (let day = 0; day <= sprintDuration; day++) {
+            const completedPoints = sprintTasks
+                .filter(task => task.isCompleted && task.dayCompleted !== null && task.dayCompleted <= day)
+                .reduce((sum, task) => sum + task.points, 0);
+            realData.push(totalPoints - completedPoints);
+        }
+        
+        if (burndownChart) {
+            burndownChart.data.datasets[1].data = realData;
+            burndownChart.update();
+        } else {
+            const ctx = document.getElementById('burndownChart').getContext('2d');
+            burndownChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Progresso Ideal', data: idealData, borderColor: 'rgba(255, 99, 132, 0.5)', borderDash: [5, 5], borderWidth: 2, fill: false, pointRadius: 0 },
+                        { label: 'Progresso Realizado', data: realData, borderColor: '#003366', backgroundColor: 'rgba(0, 51, 102, 0.1)', borderWidth: 3, fill: true, tension: 0.1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Story Points Restantes' } }, x: { title: { display: true, text: 'Dias da Sprint (Úteis)' } } },
+                    plugins: { title: { display: true, text: 'Acompanhamento de Pontos da Sprint 2', font: { size: 18 } } }
+                }
+            });
+        }
+    }
+
+    // Inicialização
+    loadData();
+    updateSprintInfo();
+    renderTaskList();
+    updateChart();
+});
+</script>
+
+</body>
+</html>
